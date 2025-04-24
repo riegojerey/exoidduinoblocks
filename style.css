@@ -9,11 +9,12 @@
     --border-color: #ffdab9; /* Peach Puff - Borders */
     --header-bg: #ff8c69; /* Salmon variant for header */
     --header-text: #ffffff; /* White text for header */
-    --code-bg: #2d2d2d; /* Dark background for code */
+    --code-bg: #2d2d2d; /* Dark background for code (matches Prism Okaidia) */
     --button-bg: var(--accent-color);
     --button-text: #ffffff;
     --button-hover-bg: var(--accent-hover);
     --shadow-color: rgba(0, 0, 0, 0.1);
+    --status-text-color: #555;
 }
 
 body {
@@ -24,8 +25,8 @@ body {
     color: var(--text-color);
     display: flex;
     flex-direction: column;
-    height: 100vh; /* Full viewport height */
-    overflow: hidden; /* Prevent body scrolling */
+    height: 100vh;
+    overflow: hidden;
 }
 
 header {
@@ -33,7 +34,8 @@ header {
     color: var(--header-text);
     padding: 10px 20px;
     box-shadow: 0 2px 4px var(--shadow-color);
-    z-index: 10; /* Ensure header is above other content */
+    z-index: 10;
+    flex-shrink: 0;
 }
 
 header h1 {
@@ -41,30 +43,38 @@ header h1 {
     font-size: 1.5em;
     display: flex;
     align-items: center;
-    gap: 10px; /* Space between icon and text */
+    gap: 10px;
 }
 
 .container {
     display: flex;
-    flex-grow: 1; /* Take remaining vertical space */
-    height: calc(100vh - 58px); /* Adjust based on header height */
-    overflow: hidden; /* Prevent container scrolling */
+    flex-grow: 1;
+    height: calc(100vh - 58px); /* Adjust if header height changes */
+    overflow: hidden;
 }
 
 #blocklyArea {
-    flex: 3; /* Takes 3 parts of the space */
-    position: relative; /* Needed for Blockly injection */
+    flex: 3;
+    position: relative;
     border-right: 2px solid var(--border-color);
-    overflow: hidden; /* Prevent internal scrolling if Blockly handles it */
+    overflow: hidden;
+    height: 100%;
+}
+
+#blocklyDiv {
+    height: 100%;
+    width: 100%;
 }
 
 #codeArea {
-    flex: 2; /* Takes 2 parts of the space */
+    flex: 2;
     display: flex;
     flex-direction: column;
     background-color: var(--secondary-bg);
     padding: 15px;
-    overflow: hidden; /* Prevent this area from scrolling */
+    overflow: hidden;
+    height: 100%;
+    box-sizing: border-box;
 }
 
 #codeArea h2 {
@@ -76,33 +86,39 @@ header h1 {
     padding-bottom: 5px;
     display: flex;
     align-items: center;
-    gap: 8px; /* Space between icon and text */
+    gap: 8px;
+    flex-shrink: 0;
 }
 
 .controls {
     margin-bottom: 15px;
     display: flex;
-    gap: 15px; /* Increased gap for better spacing */
-    align-items: center; /* Align items vertically */
-    flex-wrap: wrap; /* Allow controls to wrap on smaller screens */
+    gap: 10px; /* Adjust gap between control groups */
+    align-items: center;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+    padding-bottom: 10px; /* Add some padding below controls */
+    border-bottom: 1px solid var(--border-color); /* Separator */
 }
 
 .control-item {
     display: flex;
     align-items: center;
-    gap: 5px; /* Space within a control group (label + select/button) */
+    gap: 5px; /* Space within a control item */
+    margin-right: 10px; /* Space between control items */
 }
 
 .controls label {
     font-weight: bold;
     color: var(--text-color);
     font-size: 0.9em;
-    display: flex; /* Align icon and text in label */
+    display: flex;
     align-items: center;
     gap: 3px;
 }
 
-.controls select {
+.controls select,
+.controls button {
     padding: 6px 10px;
     border: 1px solid var(--border-color);
     border-radius: 5px;
@@ -110,131 +126,108 @@ header h1 {
     color: var(--text-color);
     font-size: 0.9em;
     cursor: pointer;
-    min-width: 150px; /* Give dropdown some base width */
+    height: 32px; /* Consistent height */
+    box-sizing: border-box;
 }
 
-.controls select:focus {
-    outline: none;
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 2px rgba(255, 127, 80, 0.3); /* Coral focus ring */
+.controls select {
+    min-width: 130px; /* Base width for selects */
+}
+.controls select:disabled {
+    background-color: #eee;
+    cursor: not-allowed;
 }
 
 
 .controls button {
     background-color: var(--button-bg);
     color: var(--button-text);
-    border: none;
-    padding: 8px 15px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 0.9em;
+    border: none; /* Buttons don't need border */
     transition: background-color 0.3s ease;
     display: flex;
     align-items: center;
-    gap: 5px; /* Space between icon and text in button */
+    justify-content: center; /* Center icon/text */
+    gap: 5px;
+    min-width: 40px; /* Min width for icon buttons */
 }
+/* Specific width for buttons with text */
+#uploadButton, #serialButton {
+    min-width: 80px;
+}
+
 
 .controls button:hover {
     background-color: var(--button-hover-bg);
 }
 
+/* Style the refresh button specifically */
+#refreshPortsButton {
+    padding: 6px 8px; /* Slightly smaller padding */
+    min-width: 35px;
+}
+
+
 #codeArea pre {
-    flex-grow: 1; /* Take remaining space in the code area */
+    flex-grow: 1;
     background-color: var(--code-bg);
     border: 1px solid var(--border-color);
     border-radius: 5px;
     padding: 10px;
-    overflow: auto; /* Add scrollbars ONLY to the code block if needed */
-    margin: 0; /* Remove default margin */
+    overflow: auto;
+    margin: 0;
     font-family: 'Courier New', Courier, monospace;
     font-size: 0.9em;
-    /* Ensure Prism styles apply correctly */
-    white-space: pre-wrap; /* Wrap long lines */
-    word-wrap: break-word; /* Break words if necessary */
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    min-height: 100px;
 }
 
-#codeArea code {
-    display: block; /* Ensure code block fills the pre tag */
-    color: #f8f8f2; /* Light text color for dark background (Okaidia theme) */
+#codeArea pre > code {
+    display: block;
+    color: #f8f8f2; /* Okaidia theme text color */
+}
+
+.status-messages {
+    margin-top: 10px;
+    padding: 8px;
+    font-size: 0.85em;
+    color: var(--status-text-color);
+    background-color: rgba(255, 255, 255, 0.5); /* Slightly transparent white */
+    border-radius: 4px;
+    min-height: 1.5em; /* Ensure space even when empty */
+    border: 1px dashed var(--border-color);
 }
 
 /* --- Blockly Specific Styling --- */
-/* Make the toolbox background match the theme */
 .blocklyToolboxDiv {
     background-color: var(--secondary-bg);
     border-right: 1px solid var(--border-color);
 }
-
-/* Style category text */
 .blocklyTreeLabel {
     color: var(--text-color) !important;
     font-weight: bold;
 }
-
-/* Style selected category */
 .blocklyTreeRow.blocklyTreeSelected {
-    background-color: var(--border-color) !important; /* Use a subtle highlight */
+    background-color: var(--border-color) !important;
 }
 
-/* Style scrollbars to be less obtrusive */
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: var(--primary-bg);
-}
-
-::-webkit-scrollbar-thumb {
-    background: var(--border-color);
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: var(--accent-color);
-}
+/* --- Scrollbars --- */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--primary-bg); }
+::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-color); }
 
 /* --- Responsive Adjustments --- */
 @media (max-width: 768px) {
-    .container {
-        flex-direction: column; /* Stack vertically on smaller screens */
-        height: auto; /* Allow content height */
-        overflow: auto; /* Allow scrolling on the container */
-    }
-
-    #blocklyArea {
-        height: 50vh; /* Give fixed height */
-        border-right: none;
-        border-bottom: 2px solid var(--border-color);
-        flex-basis: auto; /* Reset flex basis */
-    }
-
-     #codeArea {
-        height: auto; /* Adjust height based on content */
-        flex-basis: auto; /* Reset flex basis */
-    }
-
-     #codeArea pre {
-        height: 30vh; /* Fixed height for code preview on mobile */
-    }
-
-    header h1 {
-        font-size: 1.2em;
-    }
-
-    .controls {
-        gap: 10px; /* Reduce gap on smaller screens */
-    }
-
-    .controls select {
-        padding: 5px 8px;
-        font-size: 0.85em;
-        min-width: 120px;
-    }
-
-    .controls button {
-        padding: 6px 10px;
-        font-size: 0.8em;
-    }
+    .container { flex-direction: column; height: auto; overflow: auto; }
+    #blocklyArea { height: 50vh; border-right: none; border-bottom: 2px solid var(--border-color); flex-basis: auto; min-height: 300px; }
+    #codeArea { height: auto; flex-basis: auto; min-height: 250px; }
+    #codeArea pre { height: 30vh; min-height: 150px; }
+    header h1 { font-size: 1.2em; }
+    .controls { gap: 8px; }
+    .controls select, .controls button { font-size: 0.85em; padding: 5px 8px; height: 30px;}
+    .controls select { min-width: 110px; }
+    #uploadButton, #serialButton { min-width: 70px; }
+    #refreshPortsButton { min-width: 30px; padding: 5px 6px;}
 }
+
