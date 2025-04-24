@@ -1,0 +1,240 @@
+/* style.css */
+:root {
+    /* Pastel Orange Theme */
+    --primary-bg: #fffaf0; /* Floral White - Light background */
+    --secondary-bg: #ffe4c4; /* Bisque - Slightly darker background/panels */
+    --accent-color: #ff7f50; /* Coral - Main accent color */
+    --accent-hover: #ff6347; /* Tomato - Accent hover */
+    --text-color: #4a4a4a; /* Dark Gray - Primary text */
+    --border-color: #ffdab9; /* Peach Puff - Borders */
+    --header-bg: #ff8c69; /* Salmon variant for header */
+    --header-text: #ffffff; /* White text for header */
+    --code-bg: #2d2d2d; /* Dark background for code */
+    --button-bg: var(--accent-color);
+    --button-text: #ffffff;
+    --button-hover-bg: var(--accent-hover);
+    --shadow-color: rgba(0, 0, 0, 0.1);
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: var(--primary-bg);
+    color: var(--text-color);
+    display: flex;
+    flex-direction: column;
+    height: 100vh; /* Full viewport height */
+    overflow: hidden; /* Prevent body scrolling */
+}
+
+header {
+    background-color: var(--header-bg);
+    color: var(--header-text);
+    padding: 10px 20px;
+    box-shadow: 0 2px 4px var(--shadow-color);
+    z-index: 10; /* Ensure header is above other content */
+}
+
+header h1 {
+    margin: 0;
+    font-size: 1.5em;
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Space between icon and text */
+}
+
+.container {
+    display: flex;
+    flex-grow: 1; /* Take remaining vertical space */
+    height: calc(100vh - 58px); /* Adjust based on header height */
+    overflow: hidden; /* Prevent container scrolling */
+}
+
+#blocklyArea {
+    flex: 3; /* Takes 3 parts of the space */
+    position: relative; /* Needed for Blockly injection */
+    border-right: 2px solid var(--border-color);
+    overflow: hidden; /* Prevent internal scrolling if Blockly handles it */
+}
+
+#codeArea {
+    flex: 2; /* Takes 2 parts of the space */
+    display: flex;
+    flex-direction: column;
+    background-color: var(--secondary-bg);
+    padding: 15px;
+    overflow: hidden; /* Prevent this area from scrolling */
+}
+
+#codeArea h2 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1.2em;
+    color: var(--accent-color);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 8px; /* Space between icon and text */
+}
+
+.controls {
+    margin-bottom: 15px;
+    display: flex;
+    gap: 15px; /* Increased gap for better spacing */
+    align-items: center; /* Align items vertically */
+    flex-wrap: wrap; /* Allow controls to wrap on smaller screens */
+}
+
+.control-item {
+    display: flex;
+    align-items: center;
+    gap: 5px; /* Space within a control group (label + select/button) */
+}
+
+.controls label {
+    font-weight: bold;
+    color: var(--text-color);
+    font-size: 0.9em;
+    display: flex; /* Align icon and text in label */
+    align-items: center;
+    gap: 3px;
+}
+
+.controls select {
+    padding: 6px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    background-color: var(--primary-bg);
+    color: var(--text-color);
+    font-size: 0.9em;
+    cursor: pointer;
+    min-width: 150px; /* Give dropdown some base width */
+}
+
+.controls select:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(255, 127, 80, 0.3); /* Coral focus ring */
+}
+
+
+.controls button {
+    background-color: var(--button-bg);
+    color: var(--button-text);
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 5px; /* Space between icon and text in button */
+}
+
+.controls button:hover {
+    background-color: var(--button-hover-bg);
+}
+
+#codeArea pre {
+    flex-grow: 1; /* Take remaining space in the code area */
+    background-color: var(--code-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 10px;
+    overflow: auto; /* Add scrollbars ONLY to the code block if needed */
+    margin: 0; /* Remove default margin */
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9em;
+    /* Ensure Prism styles apply correctly */
+    white-space: pre-wrap; /* Wrap long lines */
+    word-wrap: break-word; /* Break words if necessary */
+}
+
+#codeArea code {
+    display: block; /* Ensure code block fills the pre tag */
+    color: #f8f8f2; /* Light text color for dark background (Okaidia theme) */
+}
+
+/* --- Blockly Specific Styling --- */
+/* Make the toolbox background match the theme */
+.blocklyToolboxDiv {
+    background-color: var(--secondary-bg);
+    border-right: 1px solid var(--border-color);
+}
+
+/* Style category text */
+.blocklyTreeLabel {
+    color: var(--text-color) !important;
+    font-weight: bold;
+}
+
+/* Style selected category */
+.blocklyTreeRow.blocklyTreeSelected {
+    background-color: var(--border-color) !important; /* Use a subtle highlight */
+}
+
+/* Style scrollbars to be less obtrusive */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--primary-bg);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-color);
+}
+
+/* --- Responsive Adjustments --- */
+@media (max-width: 768px) {
+    .container {
+        flex-direction: column; /* Stack vertically on smaller screens */
+        height: auto; /* Allow content height */
+        overflow: auto; /* Allow scrolling on the container */
+    }
+
+    #blocklyArea {
+        height: 50vh; /* Give fixed height */
+        border-right: none;
+        border-bottom: 2px solid var(--border-color);
+        flex-basis: auto; /* Reset flex basis */
+    }
+
+     #codeArea {
+        height: auto; /* Adjust height based on content */
+        flex-basis: auto; /* Reset flex basis */
+    }
+
+     #codeArea pre {
+        height: 30vh; /* Fixed height for code preview on mobile */
+    }
+
+    header h1 {
+        font-size: 1.2em;
+    }
+
+    .controls {
+        gap: 10px; /* Reduce gap on smaller screens */
+    }
+
+    .controls select {
+        padding: 5px 8px;
+        font-size: 0.85em;
+        min-width: 120px;
+    }
+
+    .controls button {
+        padding: 6px 10px;
+        font-size: 0.8em;
+    }
+}

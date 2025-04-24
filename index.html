@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exoid Robotics DuinoBlocks</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css">
+</head>
+<body>
+    <header>
+        <h1><i class="fas fa-cogs"></i> Exoid Robotics DuinoBlocks</h1>
+    </header>
+
+    <div class="container">
+        <div id="blocklyArea">
+            <div id="blocklyDiv" style="height: 100%; width: 100%;"></div>
+        </div>
+
+        <div id="codeArea">
+            <h2><i class="fas fa-code"></i> Arduino Code</h2>
+            <div class="controls">
+                 <div class="control-item">
+                    <label for="boardSelector"><i class="fas fa-microchip"></i> Board:</label>
+                    <select id="boardSelector">
+                        <option value="uno">Arduino Uno</option>
+                        <option value="mega">Arduino Mega</option>
+                        <option value="nano">Arduino Nano</option>
+                        <option value="esp32">ESP32 Dev Module</option>
+                        </select>
+                 </div>
+                 <div class="control-item">
+                    <button id="uploadButton" title="Upload via Web Serial">
+                        <i class="fas fa-upload"></i> Upload
+                    </button>
+                    <button id="serialButton" title="Open Serial Monitor (Coming Soon!)">
+                        <i class="fas fa-terminal"></i> Serial
+                    </button>
+                </div>
+            </div>
+            <pre><code id="codeDiv" class="language-cpp">/* Arduino code will appear here */</code></pre>
+        </div>
+    </div>
+
+    <xml id="toolbox" style="display: none">
+        <category name="Structure" colour="%{BKY_ARDUINO_GENERAL_HUE}">
+            <block type="arduino_setup"></block>
+            <block type="arduino_loop"></block>
+        </category>
+        <category name="Logic" colour="%{BKY_LOGIC_HUE}">
+            <block type="controls_if"></block>
+            <block type="logic_compare"></block>
+            <block type="logic_operation"></block>
+            <block type="logic_negate"></block>
+            <block type="logic_boolean"></block>
+        </category>
+        <category name="Loops" colour="%{BKY_LOOPS_HUE}">
+            <block type="controls_repeat_ext">
+                <value name="TIMES">
+                    <shadow type="math_number">
+                        <field name="NUM">10</field>
+                    </shadow>
+                </value>
+            </block>
+            <block type="controls_whileUntil"></block>
+            <block type="controls_for">
+                <value name="FROM">
+                    <shadow type="math_number">
+                        <field name="NUM">1</field>
+                    </shadow>
+                </value>
+                <value name="TO">
+                    <shadow type="math_number">
+                        <field name="NUM">10</field>
+                    </shadow>
+                </value>
+                <value name="BY">
+                    <shadow type="math_number">
+                        <field name="NUM">1</field>
+                    </shadow>
+                </value>
+            </block>
+            <block type="controls_flow_statements"></block>
+        </category>
+        <category name="Math" colour="%{BKY_MATH_HUE}">
+            <block type="math_number"></block>
+            <block type="math_arithmetic">
+                <value name="A">
+                    <shadow type="math_number">
+                        <field name="NUM">1</field>
+                    </shadow>
+                </value>
+                <value name="B">
+                    <shadow type="math_number">
+                        <field name="NUM">1</field>
+                    </shadow>
+                </value>
+            </block>
+            <block type="math_single">
+                 <value name="NUM">
+                    <shadow type="math_number">
+                        <field name="NUM">9</field>
+                    </shadow>
+                </value>
+            </block>
+             <block type="math_random_int">
+                <value name="FROM">
+                  <shadow type="math_number">
+                    <field name="NUM">1</field>
+                  </shadow>
+                </value>
+                <value name="TO">
+                  <shadow type="math_number">
+                    <field name="NUM">100</field>
+                  </shadow>
+                </value>
+            </block>
+        </category>
+        <category name="Text" colour="%{BKY_TEXTS_HUE}">
+            <block type="text"></block>
+            <block type="text_join"></block>
+            <block type="text_append">
+                 <value name="TEXT">
+                    <shadow type="text"></shadow>
+                </value>
+            </block>
+        </category>
+         <category name="Variables" colour="%{BKY_VARIABLES_HUE}" custom="VARIABLE"></category>
+        <category name="Functions" colour="%{BKY_PROCEDURES_HUE}" custom="PROCEDURE"></category>
+        <sep></sep>
+        <category name="Arduino IO" colour="%{BKY_ARDUINO_IO_HUE}">
+            <block type="io_digitalwrite">
+                 <value name="STATE">
+                    <shadow type="logic_boolean">
+                        <field name="BOOL">TRUE</field>
+                    </shadow>
+                 </value>
+            </block>
+            <block type="io_digitalread"></block>
+            <block type="io_analogwrite"></block>
+            <block type="io_analogread"></block>
+            <block type="io_highlow"></block>
+             <block type="io_pinmode"></block>
+        </category>
+        <category name="Arduino Time" colour="%{BKY_ARDUINO_TIME_HUE}">
+            <block type="time_delay">
+                 <value name="DELAY_TIME_MILI">
+                    <shadow type="math_number">
+                        <field name="NUM">1000</field>
+                    </shadow>
+                </value>
+            </block>
+            <block type="time_delaymicros">
+                 <value name="DELAY_TIME_MICRO">
+                    <shadow type="math_number">
+                        <field name="NUM">100</field>
+                    </shadow>
+                </value>
+            </block>
+            <block type="time_millis"></block>
+            <block type="time_micros"></block>
+        </category>
+         <category name="Arduino Serial" colour="%{BKY_ARDUINO_SERIAL_HUE}">
+            <block type="serial_setup"></block>
+            <block type="serial_print">
+                 <value name="CONTENT">
+                    <shadow type="text">
+                        <field name="TEXT">Hello Arduino!</field>
+                    </shadow>
+                </value>
+            </block>
+             <block type="serial_available"></block>
+             <block type="serial_read"></block>
+        </category>
+    </xml>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/blockly/9.2.0/blockly.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/blockly/9.2.0/blocks.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/blockly/9.2.0/msg/en.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/blockly/9.2.0/javascript.min.js"></script> <script src="https://cdnjs.cloudflare.com/ajax/libs/blockly/9.2.0/arduino.min.js"></script>    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+
+    <script src="app.js"></script>
+    </body>
+</html>
