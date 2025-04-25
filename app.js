@@ -322,5 +322,5 @@ function defineCustomBlocks() {
 } // end defineCustomBlocks
 
 
-// --- Initialize the Application ---
+// --- Initialize the Application ---s
 initialize();
