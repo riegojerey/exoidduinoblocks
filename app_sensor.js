@@ -23,19 +23,19 @@ function defineSensorBlocks() {
     console.log("Defining sensor blocks...");
 
     // Check if HUE constant is available (optional safety check)
-     if (typeof SENSORS_HUE === 'undefined') {
+    if (typeof SENSORS_HUE === 'undefined') {
         console.warn("SENSORS_HUE not defined globally. Using default color.");
         // Use a default color if the constant is missing
         var SENSORS_HUE = 40; // Fallback color
     }
-     if (typeof getAnalogPinOptions !== 'function' || typeof getDigitalPinOptions !== 'function') {
-         console.error("Pin dropdown functions (getAnalogPinOptions/getDigitalPinOptions) not defined globally.");
-         // Provide fallback empty arrays to prevent errors, though dropdowns won't work
-         var getAnalogPinOptions = function() { return [["A0","A0"]]; }; // Basic fallback
-         var getDigitalPinOptions = function() { return [["13","13"]]; }; // Basic fallback
-     }
-
-
+    
+    // Check if pin dropdown functions are defined
+    if (typeof getAnalogPinOptions !== 'function' || typeof getDigitalPinOptions !== 'function') {
+        console.error("Pin dropdown functions (getAnalogPinOptions/getDigitalPinOptions) not defined globally.");
+        // Provide fallback empty arrays to prevent errors, though dropdowns won't work
+        var getAnalogPinOptions = function() { return [["A0","A0"]]; }; // Basic fallback
+        var getDigitalPinOptions = function() { return [["13","13"]]; }; // Basic fallback
+    }
     // --- Sensor Block Definitions ---
     Blockly.Blocks['sensor_light_condition'] = {
       init: function() {

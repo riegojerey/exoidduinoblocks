@@ -1,8 +1,10 @@
 /**
  * ExoiDuino - Blockly Web Editor for Arduino
- * This version assumes generator logic is loaded from separate files
- * in libs/generator/ via the HTML.
- * Defines visuals for custom blocks AND standard Arduino blocks with field inputs.
+ * Main application logic.
+ * Assumes generator logic is loaded from separate files in libs/generator/.
+ * Assumes motor block definitions are loaded from app_motors.js.
+ * Defines visuals for standard Arduino blocks, Blink block, and Sensor blocks.
+ * Uses DOMContentLoaded to ensure HTML is ready before initialize() runs.
  */
 
 'use strict';
@@ -40,7 +42,7 @@ const boardPins = {
     }
 };
 
-// Function generators for dropdowns
+// Function generators for dropdowns - Defined globally
 function getDigitalPinOptions() { return boardPins[selectedBoard]?.digital || boardPins['uno'].digital; }
 function getPWMPinOptions() { return boardPins[selectedBoard]?.pwm || boardPins['uno'].pwm; }
 function getAnalogPinOptions() { return boardPins[selectedBoard]?.analog || boardPins['uno'].analog; }
@@ -59,6 +61,7 @@ const ARDUINO_TIME_HUE = 140; // Lime Green
 const ARDUINO_GENERAL_HUE = 180; // Teal/Cyan
 const ARDUINO_SERIAL_HUE = 170; // Teal/Blue
 const SENSORS_HUE = 40; // New color for Sensors (Orange/Yellow)
+const MOTORS_HUE = "#FF6680"; // Custom Color for Motors
 
 
 // --- Main Initialization Function ---
@@ -76,8 +79,16 @@ function initialize() {
         disableElement('serialButton', true);
     }
 
-    // --- Register ALL Block Definitions ---
-    defineAllBlocks(); // Defines L298N, Blink, Sensors, AND standard Arduino blocks
+    // --- Register Block Definitions ---
+    defineAllBlocks(); // Defines Base, IO, Time, Serial, Blink, AND Sensors
+    // defineBaseBlocks(); // Renamed back for clarity
+    if (typeof defineMotorBlocks === "function") {
+        defineMotorBlocks(); // Call function from app_motors.js
+    } else {
+        console.error("defineMotorBlocks function not found. Ensure app_motors.js is loaded before app.js.");
+        showStatus("Error: Motor block definitions failed to load.", "error");
+    }
+
 
     // --- Configure and Inject Blockly ---
     const blocklyDiv = document.getElementById('blocklyDiv');
@@ -148,30 +159,23 @@ function handleBoardChange(event) {
             'io_digitalwrite', 'io_digitalread', 'io_pwm_write',
             'io_analogread', 'io_pinmode',
             'sensor_light_condition', 'sensor_light_value', 'sensor_potentiometer',
-            'sensor_ultrasonic_init', 'encoder_init' // Add encoder init block
+            'sensor_ultrasonic_init', 'encoder_init',
+            'l298n_setup' // Add L298N setup if its fields need updating (currently they don't)
         ];
         workspace.getAllBlocks(false).forEach(block => {
             if (blocksToUpdate.includes(block.type)) {
                 // Update TRIG_PIN if it exists
                 const trigPinField = block.getField('TRIG_PIN');
-                 if (trigPinField instanceof Blockly.FieldDropdown) {
-                    updateDropdownField(trigPinField, getDigitalPinOptions());
-                }
+                 if (trigPinField instanceof Blockly.FieldDropdown) { updateDropdownField(trigPinField, getDigitalPinOptions()); }
                 // Update ECHO_PIN if it exists
                 const echoPinField = block.getField('ECHO_PIN');
-                 if (echoPinField instanceof Blockly.FieldDropdown) {
-                    updateDropdownField(echoPinField, getDigitalPinOptions());
-                }
+                 if (echoPinField instanceof Blockly.FieldDropdown) { updateDropdownField(echoPinField, getDigitalPinOptions()); }
                  // Update CLK_PIN dropdown if it exists (for encoder)
                 const clkPinField = block.getField('CLK_PIN');
-                 if (clkPinField instanceof Blockly.FieldDropdown) {
-                    updateDropdownField(clkPinField, getDigitalPinOptions());
-                }
+                 if (clkPinField instanceof Blockly.FieldDropdown) { updateDropdownField(clkPinField, getDigitalPinOptions()); }
                  // Update DT_PIN dropdown if it exists (for encoder)
                 const dtPinField = block.getField('DT_PIN');
-                 if (dtPinField instanceof Blockly.FieldDropdown) {
-                    updateDropdownField(dtPinField, getDigitalPinOptions());
-                }
+                 if (dtPinField instanceof Blockly.FieldDropdown) { updateDropdownField(dtPinField, getDigitalPinOptions()); }
                 // Update PIN if it exists
                 const pinField = block.getField('PIN');
                 if (pinField instanceof Blockly.FieldDropdown) {
@@ -435,15 +439,9 @@ function disableElement(elementId, disabled) {
 
 // --- Block Definitions ---
 // Defines the visual appearance and fields of blocks
-function defineAllBlocks() { // Renamed from defineCustomBlocks
+function defineAllBlocks() { // Renamed from defineBaseBlocks
     // HSL Colors are defined globally above
 
-    // --- L298N Setup Block ---
-    Blockly.Blocks['l298n_setup'] = { init: function() { this.appendDummyInput().appendField("Setup L298N Motor Driver"); this.appendDummyInput().setAlign(Blockly.ALIGN_RIGHT).appendField("Motor A:").appendField("ENA").appendField(new Blockly.FieldNumber(5), "ENA").appendField("IN1").appendField(new Blockly.FieldNumber(7), "IN1").appendField("IN2").appendField(new Blockly.FieldNumber(8), "IN2"); this.appendDummyInput().setAlign(Blockly.ALIGN_RIGHT).appendField("Motor B:").appendField("ENB").appendField(new Blockly.FieldNumber(6), "ENB").appendField("IN3").appendField(new Blockly.FieldNumber(9), "IN3").appendField("IN4").appendField(new Blockly.FieldNumber(10), "IN4"); this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour("#FF6680"); this.setTooltip("Defines the Arduino pins connected to the L298N driver."); this.setHelpUrl(""); } };
-    // --- L298N Motor Control Block ---
-    Blockly.Blocks['l298n_motor'] = { init: function() { this.appendValueInput("SPEED").setCheck("Number").appendField("Set Motor").appendField(new Blockly.FieldDropdown([["A","A"], ["B","B"]]), "MOTOR_CHOICE").appendField("Direction").appendField(new Blockly.FieldDropdown([["Forward","FORWARD"], ["Backward","BACKWARD"], ["Stop","STOP"]]), "DIRECTION").appendField("Speed (0-255)"); this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour("#FF6680"); this.setTooltip("Controls the direction and speed of one motor (A or B)."); this.setHelpUrl(""); } };
-    // --- L298N Stop Motors Block ---
-    Blockly.Blocks['l298n_stop_motors'] = { init: function() { this.appendDummyInput().appendField("Stop Both Motors"); this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour("#FF6680"); this.setTooltip("Stops both motors A and B."); this.setHelpUrl(""); } };
     // --- Blink Built-in LED Block ---
     Blockly.Blocks['inout_buildin_led_blink'] = { init: function() { this.appendDummyInput().appendField("Blink Built-in LED (Pin 13)"); this.appendValueInput("DELAY_TIME").setCheck("Number").appendField("Delay (ms)"); this.setInputsInline(true); this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(ARDUINO_IO_HUE); this.setTooltip("Blinks the LED on Pin 13 with the specified delay."); this.setHelpUrl(""); } };
 
@@ -485,8 +483,9 @@ function defineAllBlocks() { // Renamed from defineCustomBlocks
     // REMOVED - Relying on blocks.min.js from CDN for these standard visuals
 
 
-} // end defineBaseBlocks
+} // end defineAllBlocks
 
 
 // --- Initialize the Application ---
-initialize();
+// Wait for the DOM to be fully loaded before calling initialize
+document.addEventListener('DOMContentLoaded', initialize);

@@ -54,7 +54,10 @@
 
     <xml id="toolbox" style="display: none">
          <category name="Structure" colour="180"> <block type="arduino_setup"></block> <block type="arduino_loop"></block> </category>
-        <category name="Line Follower" colour="#FF6680"> <block type="l298n_setup"> <field name="ENA">5</field> <field name="IN1">7</field> <field name="IN2">8</field> <field name="ENB">6</field> <field name="IN3">9</field> <field name="IN4">10</field> </block> <block type="l298n_motor"> <field name="MOTOR_CHOICE">A</field> <field name="DIRECTION">FORWARD</field> <value name="SPEED"> <shadow type="math_number"> <field name="NUM">200</field> </shadow> </value> </block> <block type="l298n_stop_motors"></block> </category>
+        <category name="Motors" colour="#FF6680"> <label text="DC Motors (L298N)" web-class="toolbox-label"></label>
+             <block type="l298n_setup"></block> <block type="l298n_motor"> <field name="MOTOR_CHOICE">A</field> <field name="DIRECTION">FORWARD</field> <value name="SPEED"> <shadow type="math_number"> <field name="NUM">200</field> </shadow> </value> </block>
+             <block type="l298n_stop_motors"></block>
+        </category>
         <category name="Logic" colour="210"> <block type="controls_if"></block> <block type="logic_compare"></block> <block type="logic_operation"></block> <block type="logic_negate"></block> <block type="logic_boolean"></block> </category>
         <category name="Loops" colour="120"> <block type="controls_repeat_ext"> <value name="TIMES"> <shadow type="math_number"><field name="NUM">10</field></shadow> </value> </block> <block type="controls_whileUntil"></block> <block type="controls_for"> <value name="FROM"><shadow type="math_number"><field name="NUM">1</field></shadow></value> <value name="TO"><shadow type="math_number"><field name="NUM">10</field></shadow></value> <value name="BY"><shadow type="math_number"><field name="NUM">1</field></shadow></value> </block> <block type="controls_flow_statements"></block> </category>
         <category name="Math" colour="230"> <block type="math_number"></block> <block type="math_arithmetic"></block> <block type="math_single"></block> <block type="math_random_int"> <value name="FROM"><shadow type="math_number"><field name="NUM">1</field></shadow></value> <value name="TO"><shadow type="math_number"><field name="NUM">100</field></shadow></value> </block> </category>
@@ -83,8 +86,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/blockly/9.2.0/msg/en.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/blockly/9.2.0/javascript.min.js"></script>
 
-    <script src="libs/generator/arduino_generator_init.js" defer></script>
-    <script src="libs/generator/structure.js" defer></script>
+    <script src="libs/generator/arduino_generator_init.js"></script>
+
+    <script src="app.js"></script>       <script src="app_sensor.js"></script> <script src="app_motors.js"></script> <script src="libs/generator/structure.js" defer></script>
     <script src="libs/generator/logic.js" defer></script>
     <script src="libs/generator/loops.js" defer></script>
     <script src="libs/generator/math.js" defer></script>
@@ -100,7 +104,7 @@
     <script src="libs/generator/l298n.js" defer></script>
     <script src="libs/generator/blink.js" defer></script>
 
-    <script src="app_sensor.js"></script> <script src="app.js" defer></script>       <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js" defer></script>
 
