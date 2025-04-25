@@ -76,8 +76,8 @@ function initialize() {
         disableElement('serialButton', true);
     }
 
-    // --- Register Custom Blocks (Visual Definition) ---
-    defineCustomBlocks(); // Defines L298N, Blink, AND standard Arduino blocks
+    // --- Register ALL Block Definitions ---
+    defineAllBlocks(); // Defines L298N, Blink, Sensors, AND standard Arduino blocks
 
     // --- Configure and Inject Blockly ---
     const blocklyDiv = document.getElementById('blocklyDiv');
@@ -148,19 +148,29 @@ function handleBoardChange(event) {
             'io_digitalwrite', 'io_digitalread', 'io_pwm_write',
             'io_analogread', 'io_pinmode',
             'sensor_light_condition', 'sensor_light_value', 'sensor_potentiometer',
-            'sensor_ultrasonic_init' // Add ultrasonic init block
+            'sensor_ultrasonic_init', 'encoder_init' // Add encoder init block
         ];
         workspace.getAllBlocks(false).forEach(block => {
             if (blocksToUpdate.includes(block.type)) {
                 // Update TRIG_PIN if it exists
                 const trigPinField = block.getField('TRIG_PIN');
-                if (trigPinField instanceof Blockly.FieldDropdown) {
+                 if (trigPinField instanceof Blockly.FieldDropdown) {
                     updateDropdownField(trigPinField, getDigitalPinOptions());
                 }
                 // Update ECHO_PIN if it exists
                 const echoPinField = block.getField('ECHO_PIN');
                  if (echoPinField instanceof Blockly.FieldDropdown) {
                     updateDropdownField(echoPinField, getDigitalPinOptions());
+                }
+                 // Update CLK_PIN dropdown if it exists (for encoder)
+                const clkPinField = block.getField('CLK_PIN');
+                 if (clkPinField instanceof Blockly.FieldDropdown) {
+                    updateDropdownField(clkPinField, getDigitalPinOptions());
+                }
+                 // Update DT_PIN dropdown if it exists (for encoder)
+                const dtPinField = block.getField('DT_PIN');
+                 if (dtPinField instanceof Blockly.FieldDropdown) {
+                    updateDropdownField(dtPinField, getDigitalPinOptions());
                 }
                 // Update PIN if it exists
                 const pinField = block.getField('PIN');
@@ -179,8 +189,6 @@ function handleBoardChange(event) {
 
 /**
  * Helper function to update options and value of a dropdown field.
- * @param {Blockly.FieldDropdown} field The dropdown field to update.
- * @param {Array<Array<string>>} newOptions The new options array.
  */
 function updateDropdownField(field, newOptions) {
     const currentValue = field.getValue();
@@ -425,9 +433,9 @@ function disableElement(elementId, disabled) {
 }
 
 
-// --- Custom Block Definitions ---
-// Defines the visual appearance and fields of custom blocks
-function defineCustomBlocks() {
+// --- Block Definitions ---
+// Defines the visual appearance and fields of blocks
+function defineAllBlocks() { // Renamed from defineCustomBlocks
     // HSL Colors are defined globally above
 
     // --- L298N Setup Block ---
@@ -469,12 +477,15 @@ function defineCustomBlocks() {
     Blockly.Blocks['sensor_potentiometer'] = { init: function() { this.appendDummyInput().appendField("Potentiometer value on pin").appendField(new Blockly.FieldDropdown(getAnalogPinOptions), "PIN"); this.appendDummyInput().appendField("as").appendField(new Blockly.FieldDropdown([["Value (0-1023)","VALUE"], ["Percentage (0-100)","PERCENTAGE"]]), "UNIT"); this.setInputsInline(true); this.setOutput(true, "Number"); this.setColour(SENSORS_HUE); this.setTooltip("Reads the value from a potentiometer, either raw (0-1023) or as a percentage (0-100)."); this.setHelpUrl(""); } };
     Blockly.Blocks['sensor_ultrasonic_init'] = { init: function() { this.appendDummyInput().appendField("Setup Ultrasonic Sensor").appendField(new Blockly.FieldVariable("mySonar"), "SONAR_VAR"); this.appendDummyInput().setAlign(Blockly.ALIGN_RIGHT).appendField("Trig Pin").appendField(new Blockly.FieldDropdown(getDigitalPinOptions), "TRIG_PIN"); this.appendDummyInput().setAlign(Blockly.ALIGN_RIGHT).appendField("Echo Pin").appendField(new Blockly.FieldDropdown(getDigitalPinOptions), "ECHO_PIN"); this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(SENSORS_HUE); this.setTooltip("Initializes an ultrasonic sensor using the NewPing library."); this.setHelpUrl("https://bitbucket.org/teckel12/arduino-new-ping/wiki/Home"); } };
     Blockly.Blocks['sensor_ultrasonic_read'] = { init: function() { this.appendDummyInput().appendField("Distance in").appendField(new Blockly.FieldDropdown([["cm","CM"], ["inch","INCH"]]), "UNIT"); this.appendDummyInput().appendField("from sensor").appendField(new Blockly.FieldVariable("mySonar"), "SONAR_VAR"); this.setInputsInline(true); this.setOutput(true, "Number"); this.setColour(SENSORS_HUE); this.setTooltip("Reads the distance (using NewPing library) from the specified ultrasonic sensor. Returns 0 if no echo."); this.setHelpUrl("https://bitbucket.org/teckel12/arduino-new-ping/wiki/Home"); } };
+    Blockly.Blocks['encoder_init'] = { init: function() { this.appendDummyInput().appendField("Setup Encoder").appendField(new Blockly.FieldVariable("myEncoder"), "ENCODER_VAR"); this.appendDummyInput().setAlign(Blockly.ALIGN_RIGHT).appendField("Clock Pin").appendField(new Blockly.FieldDropdown(getDigitalPinOptions), "CLK_PIN"); this.appendDummyInput().setAlign(Blockly.ALIGN_RIGHT).appendField("Data Pin").appendField(new Blockly.FieldDropdown(getDigitalPinOptions), "DT_PIN"); this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(SENSORS_HUE); this.setTooltip("Initializes a rotary encoder using the Encoder library."); this.setHelpUrl("https://www.pjrc.com/teensy/td_libs_Encoder.html"); } };
+    Blockly.Blocks['encoder_read'] = { init: function() { this.appendDummyInput().appendField("Read Encoder").appendField(new Blockly.FieldVariable("myEncoder"), "ENCODER_VAR"); this.setInputsInline(true); this.setOutput(true, "Number"); this.setColour(SENSORS_HUE); this.setTooltip("Reads the current count from the specified encoder."); this.setHelpUrl("https://www.pjrc.com/teensy/td_libs_Encoder.html"); } };
+    Blockly.Blocks['encoder_write'] = { init: function() { this.appendDummyInput().appendField("Set Encoder").appendField(new Blockly.FieldVariable("myEncoder"), "ENCODER_VAR"); this.appendValueInput("VALUE").setCheck("Number").appendField("Value"); this.setInputsInline(true); this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(SENSORS_HUE); this.setTooltip("Sets the internal count of the specified encoder."); this.setHelpUrl("https://www.pjrc.com/teensy/td_libs_Encoder.html"); } };
 
     // --- Standard Block Definitions (Logic, Loops, Math, Text) ---
-    // These are assumed to be loaded from blocks.min.js CDN
+    // REMOVED - Relying on blocks.min.js from CDN for these standard visuals
 
 
-} // end defineCustomBlocks
+} // end defineBaseBlocks
 
 
 // --- Initialize the Application ---
