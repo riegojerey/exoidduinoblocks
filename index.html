@@ -70,10 +70,38 @@
             <block type="sensor_potentiometer">
                 <field name="UNIT">VALUE</field>
             </block>
+            <label text="Ultrasonic Sensor" web-class="toolbox-label"></label>
+            <block type="sensor_ultrasonic_init">
+                 </block>
+             <block type="sensor_ultrasonic_read">
+                 <field name="UNIT">CM</field>
+                 </block>
         </category>
-        <category name="Arduino IO" colour="260"> <block type="inout_buildin_led_blink"> <value name="DELAY_TIME"> <shadow type="math_number"> <field name="NUM">1000</field> </shadow> </value> </block> <block type="io_digitalwrite"> <field name="PIN">13</field> <field name="STATE">HIGH</field> </block> <block type="io_digitalread"> <field name="PIN">2</field> </block> <block type="io_pwm_write"> <value name="VALUE"> <shadow type="math_number"><field name="NUM">128</field></shadow> </value> </block> <block type="io_analogread"> <field name="PIN">A0</field> </block> <block type="io_pinmode"> <field name="PIN">13</field> <field name="MODE">OUTPUT</field> </block> </category>
-        <category name="Arduino Time" colour="140"> <block type="time_delay"> <value name="DELAY_TIME_MILI"> <shadow type="math_number"><field name="NUM">1000</field></shadow> </value> </block> <block type="time_delaymicros"> <value name="DELAY_TIME_MICRO"> <shadow type="math_number"><field name="NUM">100</field></shadow> </value> </block> <block type="time_millis"></block> <block type="time_micros"></block> </category>
-         <category name="Arduino Serial" colour="170"> <block type="serial_setup"> <field name="BAUD">9600</field> </block> <block type="serial_print"> <value name="CONTENT"> <shadow type="text"><field name="TEXT">Hello Arduino!</field></shadow> </value> </block> <block type="serial_available"></block> <block type="serial_read"></block> </category>
+        <category name="Arduino IO" colour="260"> <block type="inout_buildin_led_blink"> <value name="DELAY_TIME"> <shadow type="math_number"> <field name="NUM">1000</field> </shadow> </value> </block>
+            <block type="io_digitalwrite">
+                <field name="PIN">13</field> <field name="STATE">HIGH</field> </block>
+            <block type="io_digitalread">
+                 <field name="PIN">2</field> </block>
+            <block type="io_pwm_write"> <value name="VALUE"> <shadow type="math_number"><field name="NUM">128</field></shadow> </value>
+            </block>
+            <block type="io_analogread">
+                 <field name="PIN">A0</field> </block>
+             <block type="io_pinmode">
+                 <field name="PIN">13</field> <field name="MODE">OUTPUT</field> </block>
+        </category>
+        <category name="Arduino Time" colour="140"> <block type="time_delay"> <value name="DELAY_TIME_MILI"> <shadow type="math_number"><field name="NUM">1000</field></shadow> </value> </block>
+            <block type="time_delaymicros"> <value name="DELAY_TIME_MICRO"> <shadow type="math_number"><field name="NUM">100</field></shadow> </value> </block>
+            <block type="time_millis"></block>
+            <block type="time_micros"></block>
+        </category>
+         <category name="Arduino Serial" colour="170"> <block type="serial_setup">
+                <field name="BAUD">9600</field> </block>
+            <block type="serial_print">
+                 <value name="CONTENT"> <shadow type="text"><field name="TEXT">Hello Arduino!</field></shadow> </value>
+                 </block>
+             <block type="serial_available"></block>
+             <block type="serial_read"></block>
+        </category>
     </xml>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/blockly/9.2.0/blockly.min.js"></script>
@@ -93,8 +121,10 @@
     <script src="libs/generator/arduino_time.js" defer></script>
     <script src="libs/generator/arduino_serial.js" defer></script>
     <script src="libs/generator/sensors.js" defer></script>
+    <script src="libs/generator/ultrasonic.js" defer></script>
     <script src="libs/generator/l298n.js" defer></script>
     <script src="libs/generator/blink.js" defer></script>
+
     <script src="app.js" defer></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js" defer></script>

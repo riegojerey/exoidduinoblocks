@@ -147,35 +147,58 @@ function handleBoardChange(event) {
         const blocksToUpdate = [
             'io_digitalwrite', 'io_digitalread', 'io_pwm_write',
             'io_analogread', 'io_pinmode',
-            'sensor_light_condition', 'sensor_light_value', 'sensor_potentiometer'
+            'sensor_light_condition', 'sensor_light_value', 'sensor_potentiometer',
+            'sensor_ultrasonic_init' // Add ultrasonic init block
         ];
         workspace.getAllBlocks(false).forEach(block => {
             if (blocksToUpdate.includes(block.type)) {
+                // Update TRIG_PIN if it exists
+                const trigPinField = block.getField('TRIG_PIN');
+                if (trigPinField instanceof Blockly.FieldDropdown) {
+                    updateDropdownField(trigPinField, getDigitalPinOptions());
+                }
+                // Update ECHO_PIN if it exists
+                const echoPinField = block.getField('ECHO_PIN');
+                 if (echoPinField instanceof Blockly.FieldDropdown) {
+                    updateDropdownField(echoPinField, getDigitalPinOptions());
+                }
+                // Update PIN if it exists
                 const pinField = block.getField('PIN');
                 if (pinField instanceof Blockly.FieldDropdown) {
                     let newOptions;
                     if (block.type === 'io_pwm_write') { newOptions = getPWMPinOptions(); }
                     else if (block.type === 'io_analogread' || block.type.startsWith('sensor_')) { newOptions = getAnalogPinOptions(); }
                     else { newOptions = getDigitalPinOptions(); }
-
-                    const currentValue = pinField.getValue();
-                    let valueStillValid = newOptions.some(option => option[1] === currentValue);
-                    const validator = pinField.getValidator();
-                    pinField.setValidator(null);
-                    pinField.menuGenerator_ = newOptions;
-                    if (!valueStillValid && newOptions.length > 0) {
-                        pinField.setValue(newOptions[0][1]);
-                    } else {
-                        pinField.setValue('force_rerender_dummy_value');
-                        pinField.setValue(currentValue);
-                    }
-                    pinField.setValidator(validator);
+                    updateDropdownField(pinField, newOptions);
                 }
             }
         });
     }
      generateCodeAndUpdatePreview();
 }
+
+/**
+ * Helper function to update options and value of a dropdown field.
+ * @param {Blockly.FieldDropdown} field The dropdown field to update.
+ * @param {Array<Array<string>>} newOptions The new options array.
+ */
+function updateDropdownField(field, newOptions) {
+    const currentValue = field.getValue();
+    let valueStillValid = newOptions.some(option => option[1] === currentValue);
+    const validator = field.getValidator();
+    field.setValidator(null); // Temporarily remove validator
+    field.menuGenerator_ = newOptions; // Update options
+    // Set value: keep if valid, otherwise set to first option
+    if (!valueStillValid && newOptions.length > 0) {
+        field.setValue(newOptions[0][1]);
+    } else {
+        // Force re-render even if value is the same, to show new options
+        field.setValue('force_rerender_dummy_value'); // Temporary dummy value
+        field.setValue(currentValue); // Set back to original (or first valid if it changed)
+    }
+    field.setValidator(validator); // Restore validator
+}
+
 
 /**
  * Handles changes in the Blockly workspace to regenerate code.
@@ -444,9 +467,11 @@ function defineCustomBlocks() {
     Blockly.Blocks['sensor_light_condition'] = { init: function() { this.appendDummyInput().appendField("Light Sensor is").appendField(new Blockly.FieldDropdown([["Light","LIGHT"], ["Dark","DARK"]]), "STATE"); this.appendDummyInput().appendField("on pin").appendField(new Blockly.FieldDropdown(getAnalogPinOptions), "PIN"); this.setInputsInline(true); this.setOutput(true, "Boolean"); this.setColour(SENSORS_HUE); this.setTooltip("Checks if the light sensor reading is light (< 300) or dark (>= 300)."); this.setHelpUrl(""); } };
     Blockly.Blocks['sensor_light_value'] = { init: function() { this.appendDummyInput().appendField("Light Sensor value on pin").appendField(new Blockly.FieldDropdown(getAnalogPinOptions), "PIN"); this.setInputsInline(true); this.setOutput(true, "Number"); this.setColour(SENSORS_HUE); this.setTooltip("Reads the raw analog value (0-1023) from a light sensor."); this.setHelpUrl(""); } };
     Blockly.Blocks['sensor_potentiometer'] = { init: function() { this.appendDummyInput().appendField("Potentiometer value on pin").appendField(new Blockly.FieldDropdown(getAnalogPinOptions), "PIN"); this.appendDummyInput().appendField("as").appendField(new Blockly.FieldDropdown([["Value (0-1023)","VALUE"], ["Percentage (0-100)","PERCENTAGE"]]), "UNIT"); this.setInputsInline(true); this.setOutput(true, "Number"); this.setColour(SENSORS_HUE); this.setTooltip("Reads the value from a potentiometer, either raw (0-1023) or as a percentage (0-100)."); this.setHelpUrl(""); } };
+    Blockly.Blocks['sensor_ultrasonic_init'] = { init: function() { this.appendDummyInput().appendField("Setup Ultrasonic Sensor").appendField(new Blockly.FieldVariable("mySonar"), "SONAR_VAR"); this.appendDummyInput().setAlign(Blockly.ALIGN_RIGHT).appendField("Trig Pin").appendField(new Blockly.FieldDropdown(getDigitalPinOptions), "TRIG_PIN"); this.appendDummyInput().setAlign(Blockly.ALIGN_RIGHT).appendField("Echo Pin").appendField(new Blockly.FieldDropdown(getDigitalPinOptions), "ECHO_PIN"); this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(SENSORS_HUE); this.setTooltip("Initializes an ultrasonic sensor using the NewPing library."); this.setHelpUrl("https://bitbucket.org/teckel12/arduino-new-ping/wiki/Home"); } };
+    Blockly.Blocks['sensor_ultrasonic_read'] = { init: function() { this.appendDummyInput().appendField("Distance in").appendField(new Blockly.FieldDropdown([["cm","CM"], ["inch","INCH"]]), "UNIT"); this.appendDummyInput().appendField("from sensor").appendField(new Blockly.FieldVariable("mySonar"), "SONAR_VAR"); this.setInputsInline(true); this.setOutput(true, "Number"); this.setColour(SENSORS_HUE); this.setTooltip("Reads the distance (using NewPing library) from the specified ultrasonic sensor. Returns 0 if no echo."); this.setHelpUrl("https://bitbucket.org/teckel12/arduino-new-ping/wiki/Home"); } };
 
     // --- Standard Block Definitions (Logic, Loops, Math, Text) ---
-    // REMOVED - Relying on blocks.min.js from CDN for these standard visuals
+    // These are assumed to be loaded from blocks.min.js CDN
 
 
 } // end defineCustomBlocks
