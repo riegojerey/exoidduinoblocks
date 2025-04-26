@@ -15,7 +15,6 @@ function getCleanStepperVarName(block, fieldName) {
     const variable = Blockly.Variables.getVariable(block.workspace, block.getFieldValue(fieldName));
     if (!variable) {
         console.warn(`Variable for field "${fieldName}" not found on block ${block.type}.`);
-        // Fallback to field value, cleaned, but might be incorrect if variable was deleted.
         const fieldValue = block.getFieldValue(fieldName);
         return fieldValue ? fieldValue.replace(/[^a-zA-Z0-9_]/g, '_') : 'MISSING_STEPPER_VAR';
     }
@@ -25,32 +24,30 @@ function getCleanStepperVarName(block, fieldName) {
 
 
 Blockly.Arduino['stepper_setup_2pin'] = function(block) {
+  // Get the user-chosen variable name correctly
   var userVariableName = Blockly.Variables.getVariable(block.workspace, block.getFieldValue('STEPPER_VAR'))?.name;
   if (!userVariableName) { return '// ERROR: Stepper variable not found!\n'; }
-  var variable_stepper_var = userVariableName.replace(/[^a-zA-Z0-9_]/g, '_');
+  var variable_stepper_var = userVariableName.replace(/[^a-zA-Z0-9_]/g, '_'); // Clean for C++
 
   var steps = block.getFieldValue('STEPS') || '2048';
   var pin1 = block.getFieldValue('PIN1');
   var pin2 = block.getFieldValue('PIN2');
 
-  // Add the include for the library
   Blockly.Arduino.definitions_['include_stepper'] = '#include <Stepper.h>';
-
   // Define the Stepper object instance using the clean variable name
   Blockly.Arduino.definitions_['var_stepper_' + variable_stepper_var] =
     `Stepper ${variable_stepper_var}(${steps}, ${pin1}, ${pin2});`;
-
   // Add a comment indicating pin usage
   Blockly.Arduino.definitions_['stepper_pins_' + variable_stepper_var] =
     `// Stepper ${variable_stepper_var} uses Step=${pin1}, Dir=${pin2}`;
 
-  return ''; // This block only defines things
+  return '';
 };
 
 Blockly.Arduino['stepper_setup_4pin'] = function(block) {
   var userVariableName = Blockly.Variables.getVariable(block.workspace, block.getFieldValue('STEPPER_VAR'))?.name;
    if (!userVariableName) { return '// ERROR: Stepper variable not found!\n'; }
-  var variable_stepper_var = userVariableName.replace(/[^a-zA-Z0-9_]/g, '_');
+  var variable_stepper_var = userVariableName.replace(/[^a-zA-Z0-9_]/g, '_'); // Clean for C++
 
   var steps = block.getFieldValue('STEPS') || '2048';
   var pin1 = block.getFieldValue('PIN1');
@@ -58,28 +55,25 @@ Blockly.Arduino['stepper_setup_4pin'] = function(block) {
   var pin3 = block.getFieldValue('PIN3');
   var pin4 = block.getFieldValue('PIN4');
 
-  // Add the include for the library
   Blockly.Arduino.definitions_['include_stepper'] = '#include <Stepper.h>';
-
   // Define the Stepper object instance using the clean variable name
   // Note the pin order for the 4-pin constructor: steps, pin1, pin3, pin2, pin4
   Blockly.Arduino.definitions_['var_stepper_' + variable_stepper_var] =
     `Stepper ${variable_stepper_var}(${steps}, ${pin1}, ${pin3}, ${pin2}, ${pin4});`;
-
    // Add a comment indicating pin usage
   Blockly.Arduino.definitions_['stepper_pins_' + variable_stepper_var] =
     `// Stepper ${variable_stepper_var} uses pins=${pin1}, ${pin3}, ${pin2}, ${pin4}`;
 
-  return ''; // This block only defines things
+  return '';
 };
 
 
 Blockly.Arduino['stepper_set_speed'] = function(block) {
   var userVariableName = Blockly.Variables.getVariable(block.workspace, block.getFieldValue('STEPPER_VAR'))?.name;
    if (!userVariableName) { return '// ERROR: Stepper variable not found!\n'; }
-  var variable_stepper_var = userVariableName.replace(/[^a-zA-Z0-9_]/g, '_');
+  var variable_stepper_var = userVariableName.replace(/[^a-zA-Z0-9_]/g, '_'); // Clean for C++
 
-  var speed = Blockly.Arduino.valueToCode(block, 'SPEED', Blockly.Arduino.ORDER_ATOMIC) || '60'; // Default 60 RPM
+  var speed = Blockly.Arduino.valueToCode(block, 'SPEED', Blockly.Arduino.ORDER_ATOMIC) || '60';
 
    // Ensure the init block's definition exists (safety check)
    if (!Blockly.Arduino.definitions_['var_stepper_' + variable_stepper_var]) {
@@ -93,7 +87,7 @@ Blockly.Arduino['stepper_set_speed'] = function(block) {
 Blockly.Arduino['stepper_step'] = function(block) {
   var userVariableName = Blockly.Variables.getVariable(block.workspace, block.getFieldValue('STEPPER_VAR'))?.name;
    if (!userVariableName) { return '// ERROR: Stepper variable not found!\n'; }
-  var variable_stepper_var = userVariableName.replace(/[^a-zA-Z0-9_]/g, '_');
+  var variable_stepper_var = userVariableName.replace(/[^a-zA-Z0-9_]/g, '_'); // Clean for C++
 
   var steps = Blockly.Arduino.valueToCode(block, 'STEPS', Blockly.Arduino.ORDER_ATOMIC) || '0';
 

@@ -2,9 +2,8 @@
  * ExoiDuino - Blockly Web Editor for Arduino
  * Main application logic.
  * Assumes generator logic is loaded from separate files in libs/generator/.
- * Assumes sensor block definitions are loaded from app_sensor.js.
  * Assumes motor block definitions are loaded from app_motors.js.
- * Defines visuals for standard Arduino blocks and Blink block.
+ * Defines visuals for standard Arduino blocks, Blink block, and Sensor blocks.
  * Uses DOMContentLoaded to ensure HTML is ready before initialize() runs.
  */
 
@@ -81,13 +80,8 @@ function initialize() {
     }
 
     // --- Register Block Definitions ---
-    defineBaseBlocks(); // Defines standard Arduino blocks + Blink (in this file)
-    if (typeof defineSensorBlocks === "function") {
-        defineSensorBlocks(); // Call function from app_sensor.js
-    } else {
-        console.error("defineSensorBlocks function not found. Ensure app_sensor.js is loaded before app.js.");
-        showStatus("Error: Sensor block definitions failed to load.", "error");
-    }
+    defineAllBlocks(); // Defines Base, IO, Time, Serial, Blink, AND Sensors
+    // defineBaseBlocks(); // Renamed back for clarity
     if (typeof defineMotorBlocks === "function") {
         defineMotorBlocks(); // Call function from app_motors.js
     } else {
@@ -166,7 +160,7 @@ function handleBoardChange(event) {
             'io_analogread', 'io_pinmode',
             'sensor_light_condition', 'sensor_light_value', 'sensor_potentiometer',
             'sensor_ultrasonic_init', 'encoder_init',
-            'l298n_setup', 'servo_attach' // Add blocks whose dropdowns need updating
+            'l298n_setup' // Add L298N setup if its fields need updating (currently they don't)
         ];
         workspace.getAllBlocks(false).forEach(block => {
             if (blocksToUpdate.includes(block.type)) {
@@ -182,26 +176,13 @@ function handleBoardChange(event) {
                  // Update DT_PIN dropdown if it exists (for encoder)
                 const dtPinField = block.getField('DT_PIN');
                  if (dtPinField instanceof Blockly.FieldDropdown) { updateDropdownField(dtPinField, getDigitalPinOptions()); }
-                 // Update L298N pins if they exist
-                 const enaField = block.getField('ENA');
-                 if (enaField instanceof Blockly.FieldDropdown) { updateDropdownField(enaField, getDigitalPinOptions()); }
-                 const in1Field = block.getField('IN1');
-                 if (in1Field instanceof Blockly.FieldDropdown) { updateDropdownField(in1Field, getDigitalPinOptions()); }
-                 const in2Field = block.getField('IN2');
-                 if (in2Field instanceof Blockly.FieldDropdown) { updateDropdownField(in2Field, getDigitalPinOptions()); }
-                 const enbField = block.getField('ENB');
-                 if (enbField instanceof Blockly.FieldDropdown) { updateDropdownField(enbField, getDigitalPinOptions()); }
-                 const in3Field = block.getField('IN3');
-                 if (in3Field instanceof Blockly.FieldDropdown) { updateDropdownField(in3Field, getDigitalPinOptions()); }
-                 const in4Field = block.getField('IN4');
-                 if (in4Field instanceof Blockly.FieldDropdown) { updateDropdownField(in4Field, getDigitalPinOptions()); }
                 // Update PIN if it exists
                 const pinField = block.getField('PIN');
                 if (pinField instanceof Blockly.FieldDropdown) {
                     let newOptions;
                     if (block.type === 'io_pwm_write') { newOptions = getPWMPinOptions(); }
                     else if (block.type === 'io_analogread' || block.type.startsWith('sensor_')) { newOptions = getAnalogPinOptions(); }
-                    else { newOptions = getDigitalPinOptions(); } // Default for digital IO, servo, etc.
+                    else { newOptions = getDigitalPinOptions(); }
                     updateDropdownField(pinField, newOptions);
                 }
             }
@@ -272,12 +253,15 @@ function generateCodeAndUpdatePreview() {
 async function populatePortSelector() {
     const portSelector = document.getElementById('portSelector');
     if (!portSelector || !("serial" in navigator)) return;
+
     showStatus("Requesting serial ports...", "info");
     disableElement('refreshPortsButton', true);
+
     try {
         await navigator.serial.requestPort(); // Prompt user
         const ports = await navigator.serial.getPorts();
         portSelector.innerHTML = '<option value="">-- Select Port --</option>';
+
         if (ports.length === 0) {
             showStatus("No serial ports found or permitted. Connect device and click Refresh.", "warning");
             portSelector.disabled = true;
@@ -294,9 +278,14 @@ async function populatePortSelector() {
             showStatus(`Found ${ports.length} permitted port(s). Select one.`, "success");
         }
     } catch (error) {
-        if (error.name === 'NotFoundError') { showStatus("Port selection cancelled or no port chosen.", "info"); }
-        else { console.error("Error getting/requesting serial ports:", error); showStatus("Error accessing serial ports. Check browser permissions.", "error"); }
-        portSelector.disabled = true; portSelector.innerHTML = '<option value="">-- Select Port --</option>';
+        if (error.name === 'NotFoundError') {
+             showStatus("Port selection cancelled or no port chosen.", "info");
+        } else {
+            console.error("Error getting/requesting serial ports:", error);
+            showStatus("Error accessing serial ports. Check browser permissions.", "error");
+        }
+        portSelector.disabled = true;
+        portSelector.innerHTML = '<option value="">-- Select Port --</option>';
     } finally {
         disableElement('refreshPortsButton', false);
     }
@@ -309,28 +298,84 @@ async function populatePortSelector() {
 async function handleUpload() {
     const portSelector = document.getElementById('portSelector');
     const selectedPortValue = portSelector?.value;
-    if (!selectedPortValue) { showStatus("Please select a serial port first.", "warning"); alert("Please select a serial port from the dropdown.\nClick the refresh icon (<i class='fas fa-sync-alt'></i>) to list available ports."); return; }
+
+    // 1. Check if a port is selected
+    if (!selectedPortValue) {
+        showStatus("Please select a serial port first.", "warning");
+        alert("Please select a serial port from the dropdown.\nClick the refresh icon (<i class='fas fa-sync-alt'></i>) to list available ports.");
+        return;
+    }
+
+    // 2. Regenerate code to ensure it's current
     generateCodeAndUpdatePreview();
-    if (!currentCode) { showStatus("No code generated to upload.", "warning"); alert("There are no blocks in the workspace to generate code from."); return; }
+    if (!currentCode) {
+        showStatus("No code generated to upload.", "warning");
+        alert("There are no blocks in the workspace to generate code from.");
+        return;
+    }
+
+    // 3. Find the selected port object
     let selectedPort = null;
     try {
          const ports = await navigator.serial.getPorts();
-         selectedPort = ports.find(port => { const portInfo = port.getInfo(); const portId = `vid${portInfo.usbVendorId || 'undef'}_pid${portInfo.usbProductId || 'undef'}`; return portId === selectedPortValue; });
-         if (!selectedPort) { showStatus("Selected port not found or permission revoked. Please re-select.", "warning"); await populatePortSelector(); alert("Could not find the selected port. Please refresh the list and select again."); return; }
-    } catch (error) { console.error("Error getting permitted ports:", error); showStatus(`Error getting port list: ${error.message}`, "error"); alert(`Could not get the list of permitted ports: ${error.message}`); return; }
+         selectedPort = ports.find(port => {
+             const portInfo = port.getInfo();
+             const portId = `vid${portInfo.usbVendorId || 'undef'}_pid${portInfo.usbProductId || 'undef'}`;
+             return portId === selectedPortValue;
+         });
+
+         if (!selectedPort) {
+            showStatus("Selected port not found or permission revoked. Please re-select.", "warning");
+            await populatePortSelector();
+            alert("Could not find the selected port. Please refresh the list and select again.");
+            return;
+         }
+
+    } catch (error) {
+        console.error("Error getting permitted ports:", error);
+        showStatus(`Error getting port list: ${error.message}`, "error");
+        alert(`Could not get the list of permitted ports: ${error.message}`);
+        return;
+    }
+
+
+    // 4. Attempt to connect
     showStatus(`Connecting to port...`, "info");
     try {
         const baudRate = 115200;
         await selectedPort.open({ baudRate: baudRate });
-        console.log("Port opened successfully at", baudRate); showStatus(`Connected to port at ${baudRate} baud.`, "info");
-        console.log("--- Generated Arduino Code ---"); console.log(currentCode); console.log("-----------------------------"); console.log("Port Info:", selectedPort.getInfo()); console.log("Placeholder: Actual upload protocol (e.g., STK500) needed here.");
+        console.log("Port opened successfully at", baudRate);
+        showStatus(`Connected to port at ${baudRate} baud.`, "info");
+
+        // --- CRITICAL EXPLANATION ---
+        console.log("--- Generated Arduino Code ---");
+        console.log(currentCode); // Log the generated code
+        console.log("-----------------------------");
+        console.log("Port Info:", selectedPort.getInfo());
+        console.log("Placeholder: Actual upload protocol (e.g., STK500) needed here.");
+
         showStatus("Connected! Code generated (see console). Ready for external upload tool.", "success");
-        alert("Web Serial Connected Successfully!\n\n" + "The Arduino code has been generated (check the browser console - F12).\n\n" + "IMPORTANT: This web tool CANNOT compile or flash the code directly to your Arduino.\n" + "You need to copy the generated code and use the Arduino IDE or Arduino CLI to compile and upload it to your board via the connected port.");
+        alert("Web Serial Connected Successfully!\n\n" +
+              "The Arduino code has been generated (check the browser console - F12).\n\n" + // Mention code again
+              "IMPORTANT: This web tool CANNOT compile or flash the code directly to your Arduino.\n" +
+              "You need to copy the generated code and use the Arduino IDE or Arduino CLI to compile and upload it to your board via the connected port.");
+
         serialPort = selectedPort;
-        await serialPort.close(); console.log("Port closed after connection test."); showStatus("Port closed after connection test.", "info"); serialPort = null;
+
+        // Close the port immediately after demonstration
+        await serialPort.close();
+        console.log("Port closed after connection test.");
+        showStatus("Port closed after connection test.", "info");
+        serialPort = null;
+
+
     } catch (error) {
-        console.error("Error opening or interacting with serial port:", error); showStatus(`Error connecting to port: ${error.message}`, "error"); alert(`Failed to connect or interact with the serial port: ${error.message}\n\nIs the port already in use by another program (like Arduino IDE Serial Monitor)?`);
-        if (selectedPort?.readable) { try { await selectedPort.close(); } catch (e) { /* Ignore close error */ } }
+        console.error("Error opening or interacting with serial port:", error);
+        showStatus(`Error connecting to port: ${error.message}`, "error");
+        alert(`Failed to connect or interact with the serial port: ${error.message}\n\nIs the port already in use by another program (like Arduino IDE Serial Monitor)?`);
+        if (selectedPort?.readable) {
+            try { await selectedPort.close(); } catch (e) { /* Ignore close error */ }
+        }
         serialPort = null;
     }
 }
@@ -350,9 +395,20 @@ function onResize() {
     const blocklyArea = document.getElementById('blocklyArea');
     const blocklyDiv = document.getElementById('blocklyDiv');
     if (!blocklyArea || !blocklyDiv || !workspace) return;
-    let element = blocklyDiv; let x = 0, y = 0;
-    do { x += element.offsetLeft; y += element.offsetTop; element = element.offsetParent; } while (element);
-    blocklyDiv.style.left = x + 'px'; blocklyDiv.style.top = y + 'px'; blocklyDiv.style.width = blocklyArea.offsetWidth + 'px'; blocklyDiv.style.height = blocklyArea.offsetHeight + 'px';
+
+    let element = blocklyDiv;
+    let x = 0, y = 0;
+    do {
+        x += element.offsetLeft;
+        y += element.offsetTop;
+        element = element.offsetParent;
+    } while (element);
+
+    blocklyDiv.style.left = x + 'px';
+    blocklyDiv.style.top = y + 'px';
+    blocklyDiv.style.width = blocklyArea.offsetWidth + 'px';
+    blocklyDiv.style.height = blocklyArea.offsetHeight + 'px';
+
     Blockly.svgResize(workspace);
 }
 
@@ -361,8 +417,13 @@ function onResize() {
  */
 function showStatus(message, type = 'info') {
     const statusElement = document.getElementById('statusMessages');
-    if (statusElement) { statusElement.textContent = message; statusElement.className = `status-messages status-${type}`; console.log(`Status [${type}]: ${message}`); }
-    else { console.warn("Status message element not found."); }
+    if (statusElement) {
+        statusElement.textContent = message;
+        statusElement.className = `status-messages status-${type}`;
+        console.log(`Status [${type}]: ${message}`);
+    } else {
+        console.warn("Status message element not found.");
+    }
 }
 
 /**
@@ -370,13 +431,15 @@ function showStatus(message, type = 'info') {
  */
 function disableElement(elementId, disabled) {
      const element = document.getElementById(elementId);
-     if (element) { element.disabled = disabled; }
+     if (element) {
+         element.disabled = disabled;
+     }
 }
 
 
 // --- Block Definitions ---
 // Defines the visual appearance and fields of blocks
-function defineBaseBlocks() { // Renamed from defineAllBlocks
+function defineAllBlocks() { // Renamed from defineBaseBlocks
     // HSL Colors are defined globally above
 
     // --- Blink Built-in LED Block ---
@@ -406,11 +469,21 @@ function defineBaseBlocks() { // Renamed from defineAllBlocks
     Blockly.Blocks['serial_available'] = { init: function() { this.appendDummyInput().appendField("Serial Available Bytes"); this.setOutput(true, "Number"); this.setColour(ARDUINO_SERIAL_HUE); this.setTooltip("Number of bytes available for reading from serial port."); this.setHelpUrl(""); } };
     Blockly.Blocks['serial_read'] = { init: function() { this.appendDummyInput().appendField("Serial Read Byte"); this.setOutput(true, "Number"); this.setColour(ARDUINO_SERIAL_HUE); this.setTooltip("Reads incoming serial data (one byte)."); this.setHelpUrl(""); } };
 
+    // --- Sensor Block Definitions ---
+    Blockly.Blocks['sensor_light_condition'] = { init: function() { this.appendDummyInput().appendField("Light Sensor is").appendField(new Blockly.FieldDropdown([["Light","LIGHT"], ["Dark","DARK"]]), "STATE"); this.appendDummyInput().appendField("on pin").appendField(new Blockly.FieldDropdown(getAnalogPinOptions), "PIN"); this.setInputsInline(true); this.setOutput(true, "Boolean"); this.setColour(SENSORS_HUE); this.setTooltip("Checks if the light sensor reading is light (< 300) or dark (>= 300)."); this.setHelpUrl(""); } };
+    Blockly.Blocks['sensor_light_value'] = { init: function() { this.appendDummyInput().appendField("Light Sensor value on pin").appendField(new Blockly.FieldDropdown(getAnalogPinOptions), "PIN"); this.setInputsInline(true); this.setOutput(true, "Number"); this.setColour(SENSORS_HUE); this.setTooltip("Reads the raw analog value (0-1023) from a light sensor."); this.setHelpUrl(""); } };
+    Blockly.Blocks['sensor_potentiometer'] = { init: function() { this.appendDummyInput().appendField("Potentiometer value on pin").appendField(new Blockly.FieldDropdown(getAnalogPinOptions), "PIN"); this.appendDummyInput().appendField("as").appendField(new Blockly.FieldDropdown([["Value (0-1023)","VALUE"], ["Percentage (0-100)","PERCENTAGE"]]), "UNIT"); this.setInputsInline(true); this.setOutput(true, "Number"); this.setColour(SENSORS_HUE); this.setTooltip("Reads the value from a potentiometer, either raw (0-1023) or as a percentage (0-100)."); this.setHelpUrl(""); } };
+    Blockly.Blocks['sensor_ultrasonic_init'] = { init: function() { this.appendDummyInput().appendField("Setup Ultrasonic Sensor").appendField(new Blockly.FieldVariable("mySonar"), "SONAR_VAR"); this.appendDummyInput().setAlign(Blockly.ALIGN_RIGHT).appendField("Trig Pin").appendField(new Blockly.FieldDropdown(getDigitalPinOptions), "TRIG_PIN"); this.appendDummyInput().setAlign(Blockly.ALIGN_RIGHT).appendField("Echo Pin").appendField(new Blockly.FieldDropdown(getDigitalPinOptions), "ECHO_PIN"); this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(SENSORS_HUE); this.setTooltip("Initializes an ultrasonic sensor using the NewPing library."); this.setHelpUrl("https://bitbucket.org/teckel12/arduino-new-ping/wiki/Home"); } };
+    Blockly.Blocks['sensor_ultrasonic_read'] = { init: function() { this.appendDummyInput().appendField("Distance in").appendField(new Blockly.FieldDropdown([["cm","CM"], ["inch","INCH"]]), "UNIT"); this.appendDummyInput().appendField("from sensor").appendField(new Blockly.FieldVariable("mySonar"), "SONAR_VAR"); this.setInputsInline(true); this.setOutput(true, "Number"); this.setColour(SENSORS_HUE); this.setTooltip("Reads the distance (using NewPing library) from the specified ultrasonic sensor. Returns 0 if no echo."); this.setHelpUrl("https://bitbucket.org/teckel12/arduino-new-ping/wiki/Home"); } };
+    Blockly.Blocks['encoder_init'] = { init: function() { this.appendDummyInput().appendField("Setup Encoder").appendField(new Blockly.FieldVariable("myEncoder"), "ENCODER_VAR"); this.appendDummyInput().setAlign(Blockly.ALIGN_RIGHT).appendField("Clock Pin").appendField(new Blockly.FieldDropdown(getDigitalPinOptions), "CLK_PIN"); this.appendDummyInput().setAlign(Blockly.ALIGN_RIGHT).appendField("Data Pin").appendField(new Blockly.FieldDropdown(getDigitalPinOptions), "DT_PIN"); this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(SENSORS_HUE); this.setTooltip("Initializes a rotary encoder using the Encoder library."); this.setHelpUrl("https://www.pjrc.com/teensy/td_libs_Encoder.html"); } };
+    Blockly.Blocks['encoder_read'] = { init: function() { this.appendDummyInput().appendField("Read Encoder").appendField(new Blockly.FieldVariable("myEncoder"), "ENCODER_VAR"); this.setInputsInline(true); this.setOutput(true, "Number"); this.setColour(SENSORS_HUE); this.setTooltip("Reads the current count from the specified encoder."); this.setHelpUrl("https://www.pjrc.com/teensy/td_libs_Encoder.html"); } };
+    Blockly.Blocks['encoder_write'] = { init: function() { this.appendDummyInput().appendField("Set Encoder").appendField(new Blockly.FieldVariable("myEncoder"), "ENCODER_VAR"); this.appendValueInput("VALUE").setCheck("Number").appendField("Value"); this.setInputsInline(true); this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(SENSORS_HUE); this.setTooltip("Sets the internal count of the specified encoder."); this.setHelpUrl("https://www.pjrc.com/teensy/td_libs_Encoder.html"); } };
+
     // --- Standard Block Definitions (Logic, Loops, Math, Text) ---
     // REMOVED - Relying on blocks.min.js from CDN for these standard visuals
 
 
-} // end defineBaseBlocks
+} // end defineAllBlocks
 
 
 // --- Initialize the Application ---

@@ -1,31 +1,136 @@
 /**
  * @license
- * Arduino code generator for L298N blocks.
+ * Arduino code generator for L298N blocks (New Structure).
+ * Uses Blockly.Variables.getVariable for variable names.
  */
 'use strict';
 
+// Ensure Blockly and the Arduino generator are loaded
 if (typeof Blockly === 'undefined' || !Blockly.Arduino) {
     throw new Error('Blockly or Blockly.Arduino is not loaded!');
 }
 
-Blockly.Arduino['l298n_setup'] = function(block) {
-  let ena = block.getFieldValue('ENA'); let in1 = block.getFieldValue('IN1'); let in2 = block.getFieldValue('IN2');
-  let enb = block.getFieldValue('ENB'); let in3 = block.getFieldValue('IN3'); let in4 = block.getFieldValue('IN4');
-  Blockly.Arduino.definitions_['motor_pins'] = `const int ENA = ${ena};\nconst int IN1 = ${in1};\nconst int IN2 = ${in2};\nconst int ENB = ${enb};\nconst int IN3 = ${in3};\nconst int IN4 = ${in4};`;
-  Blockly.Arduino.setups_['setup_motors'] = `pinMode(ENA, OUTPUT);\n  pinMode(IN1, OUTPUT);\n  pinMode(IN2, OUTPUT);\n  pinMode(ENB, OUTPUT);\n  pinMode(IN3, OUTPUT);\n  pinMode(IN4, OUTPUT);\n  digitalWrite(IN1, LOW);\n  digitalWrite(IN2, LOW);\n  digitalWrite(IN3, LOW);\n  digitalWrite(IN4, LOW);\n  analogWrite(ENA, 0);\n  analogWrite(ENB, 0);`;
-  return '';
+// Helper function to get a C++ safe variable name
+function getCleanL298NVarName(block, fieldName) {
+    const variable = Blockly.Variables.getVariable(block.workspace, block.getFieldValue(fieldName));
+    if (!variable) {
+        console.warn(`Variable for field "${fieldName}" not found on block ${block.type}.`);
+        const fieldValue = block.getFieldValue(fieldName);
+        return fieldValue ? fieldValue.replace(/[^a-zA-Z0-9_]/g, '_') : 'MISSING_L298N_VAR';
+    }
+    return variable.name.replace(/[^a-zA-Z0-9_]/g, '_');
+}
+
+// Generator for the NEW L298N Attach/Setup Block
+Blockly.Arduino['l298n_attach'] = function(block) {
+  var userVariableName = Blockly.Variables.getVariable(block.workspace, block.getFieldValue('VAR'))?.name;
+  if (!userVariableName) { return '// ERROR: L298N variable not found!\n'; }
+  var variable_l298n_var = userVariableName.replace(/[^a-zA-Z0-9_]/g, '_'); // Clean for C++
+
+  let ena = block.getFieldValue('ENA');
+  let in1 = block.getFieldValue('IN1');
+  let in2 = block.getFieldValue('IN2');
+  let enb = block.getFieldValue('ENB');
+  let in3 = block.getFieldValue('IN3');
+  let in4 = block.getFieldValue('IN4');
+
+  // Store pin assignments in definitions, associated with the variable name
+  Blockly.Arduino.definitions_['l298n_pins_' + variable_l298n_var] =
+    `// L298N ${variable_l298n_var} Pins:\n` +
+    `const int ${variable_l298n_var}_ENA = ${ena};\n` +
+    `const int ${variable_l298n_var}_IN1 = ${in1};\n` +
+    `const int ${variable_l298n_var}_IN2 = ${in2};\n` +
+    `const int ${variable_l298n_var}_ENB = ${enb};\n` +
+    `const int ${variable_l298n_var}_IN3 = ${in3};\n` +
+    `const int ${variable_l298n_var}_IN4 = ${in4};`;
+
+  // Set pin modes in the setup() function
+  Blockly.Arduino.setups_['setup_l298n_' + variable_l298n_var] =
+    `// Setup L298N ${variable_l298n_var}\n` +
+    `  pinMode(${variable_l298n_var}_ENA, OUTPUT);\n` +
+    `  pinMode(${variable_l298n_var}_IN1, OUTPUT);\n` +
+    `  pinMode(${variable_l298n_var}_IN2, OUTPUT);\n` +
+    `  pinMode(${variable_l298n_var}_ENB, OUTPUT);\n` +
+    `  pinMode(${variable_l298n_var}_IN3, OUTPUT);\n` +
+    `  pinMode(${variable_l298n_var}_IN4, OUTPUT);\n` +
+    `  // Initialize motors stopped\n` +
+    `  digitalWrite(${variable_l298n_var}_IN1, LOW);\n` +
+    `  digitalWrite(${variable_l298n_var}_IN2, LOW);\n` +
+    `  digitalWrite(${variable_l298n_var}_IN3, LOW);\n` +
+    `  digitalWrite(${variable_l298n_var}_IN4, LOW);\n` +
+    `  analogWrite(${variable_l298n_var}_ENA, 0);\n` +
+    `  analogWrite(${variable_l298n_var}_ENB, 0);`;
+
+  return ''; // This block only affects definitions and setup
 };
 
-Blockly.Arduino['l298n_motor'] = function(block) {
-  let motor = block.getFieldValue('MOTOR_CHOICE'); let direction = block.getFieldValue('DIRECTION'); let speed = Blockly.Arduino.valueToCode(block, 'SPEED', Blockly.Arduino.ORDER_ATOMIC) || '0';
-  let code = ''; let pin_in1 = (motor === 'A') ? 'IN1' : 'IN3'; let pin_in2 = (motor === 'A') ? 'IN2' : 'IN4'; let pin_en = (motor === 'A') ? 'ENA' : 'ENB';
-  if (direction === 'FORWARD') { code = `digitalWrite(${pin_in1}, HIGH);\n  digitalWrite(${pin_in2}, LOW);\n  analogWrite(${pin_en}, ${speed});\n`; }
-  else if (direction === 'BACKWARD') { code = `digitalWrite(${pin_in1}, LOW);\n  digitalWrite(${pin_in2}, HIGH);\n  analogWrite(${pin_en}, ${speed});\n`; }
-  else { code = `digitalWrite(${pin_in1}, LOW);\n  digitalWrite(${pin_in2}, LOW);\n  analogWrite(${pin_en}, 0);\n`; }
-  return `  // Control Motor ${motor}\n` + code;
+
+// Generator for the NEW L298N Set Direction Block
+Blockly.Arduino['l298n_set_direction'] = function(block) {
+  var userVariableName = Blockly.Variables.getVariable(block.workspace, block.getFieldValue('VAR'))?.name;
+   if (!userVariableName) { return '// ERROR: L298N variable not found!\n'; }
+  var variable_l298n_var = userVariableName.replace(/[^a-zA-Z0-9_]/g, '_'); // Clean for C++
+
+  let motor = block.getFieldValue('MOTOR_CHOICE');
+  let direction = block.getFieldValue('DIRECTION');
+
+  // Ensure the setup block's definitions exist
+  if (!Blockly.Arduino.definitions_['l298n_pins_' + variable_l298n_var]) {
+       console.warn(`L298N set direction used for '${userVariableName}' but its setup definition was not found.`);
+       return `// ERROR: Missing setup for L298N ${userVariableName}\n`;
+   }
+
+  let pin_in1 = (motor === 'A') ? `${variable_l298n_var}_IN1` : `${variable_l298n_var}_IN3`;
+  let pin_in2 = (motor === 'A') ? `${variable_l298n_var}_IN2` : `${variable_l298n_var}_IN4`;
+  let pin_en = (motor === 'A') ? `${variable_l298n_var}_ENA` : `${variable_l298n_var}_ENB`;
+  let code = '';
+
+  switch (direction) {
+    case 'FORWARD':
+      code += `digitalWrite(${pin_in1}, HIGH);\n`;
+      code += `  digitalWrite(${pin_in2}, LOW);\n`;
+      // Speed is set by the other block, don't reset PWM here unless stopping
+      break;
+    case 'BACKWARD':
+      code += `digitalWrite(${pin_in1}, LOW);\n`;
+      code += `  digitalWrite(${pin_in2}, HIGH);\n`;
+      // Speed is set by the other block
+      break;
+    case 'STOP':
+      code += `digitalWrite(${pin_in1}, LOW);\n`;
+      code += `  digitalWrite(${pin_in2}, LOW);\n`;
+      code += `  analogWrite(${pin_en}, 0); // Stop PWM when stopping direction\n`;
+      break;
+  }
+  return `  // Set Motor ${motor} Direction for ${userVariableName}\n` + code;
 };
 
-Blockly.Arduino['l298n_stop_motors'] = function(block) {
-   if (!Blockly.Arduino.definitions_['motor_pins']) { console.warn("L298N Stop block used without Setup block."); }
-  return `  // Stop both motors\n  digitalWrite(IN1, LOW);\n  digitalWrite(IN2, LOW);\n  analogWrite(ENA, 0);\n  digitalWrite(IN3, LOW);\n  digitalWrite(IN4, LOW);\n  analogWrite(ENB, 0);\n`;
+
+// Generator for the NEW L298N Set Speed Block
+Blockly.Arduino['l298n_set_speed'] = function(block) {
+  var userVariableName = Blockly.Variables.getVariable(block.workspace, block.getFieldValue('VAR'))?.name;
+   if (!userVariableName) { return '// ERROR: L298N variable not found!\n'; }
+  var variable_l298n_var = userVariableName.replace(/[^a-zA-Z0-9_]/g, '_'); // Clean for C++
+
+  let motor = block.getFieldValue('MOTOR_CHOICE');
+  let speed = block.getFieldValue('SPEED') || '255'; // Get speed from field
+
+   // Ensure the setup block's definitions exist
+   if (!Blockly.Arduino.definitions_['l298n_pins_' + variable_l298n_var]) {
+       console.warn(`L298N set speed used for '${userVariableName}' but its setup definition was not found.`);
+       return `// ERROR: Missing setup for L298N ${userVariableName}\n`;
+   }
+
+  let pin_en = (motor === 'A') ? `${variable_l298n_var}_ENA` : `${variable_l298n_var}_ENB`;
+
+  // Make sure speed is within 0-255 range (optional, block field should handle this)
+  // speed = Math.max(0, Math.min(255, parseInt(speed)));
+
+  var code = `analogWrite(${pin_en}, ${speed});\n`;
+  return `  // Set Motor ${motor} Speed for ${userVariableName}\n` + code;
 };
+
+// REMOVE Generators for old blocks if they exist
+// delete Blockly.Arduino['l298n_setup'];
+// delete Blockly.Arduino['l298n_motor'];
+// delete Blockly.Arduino['l298n_stop_motors'];

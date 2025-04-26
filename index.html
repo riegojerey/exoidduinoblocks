@@ -54,21 +54,18 @@
 
     <xml id="toolbox" style="display: none">
          <category name="Structure" colour="180"> <block type="arduino_setup"></block> <block type="arduino_loop"></block> </category>
-        <category name="Motors" colour="#FF6680">
-             <label text="DC Motors (L298N)" web-class="toolbox-label"></label>
-             <block type="l298n_setup"></block> <block type="l298n_motor"> <field name="MOTOR_CHOICE">A</field> <field name="DIRECTION">FORWARD</field> <value name="SPEED"> <shadow type="math_number"> <field name="NUM">200</field> </shadow> </value> </block>
-             <block type="l298n_stop_motors"></block>
-             <sep gap="20"></sep>
-             <label text="Servo Motors" web-class="toolbox-label"></label>
+        <category name="Motors" colour="#FF6680"> <label text="DC Motors (L298N)" web-class="toolbox-label"></label>
+             <block type="l298n_attach"></block> <block type="l298n_set_direction"> <field name="MOTOR_CHOICE">A</field> <field name="DIRECTION">FORWARD</field> </block>
+             <block type="l298n_set_speed"> <field name="MOTOR_CHOICE">A</field> <field name="SPEED">255</field> </block>
+             <sep gap="20"></sep> <label text="Servo Motors" web-class="toolbox-label"></label>
              <block type="servo_attach"></block>
              <block type="servo_detach"></block>
              <block type="servo_write"> <value name="DEGREE"> <shadow type="math_number"><field name="NUM">90</field></shadow> </value> </block>
              <block type="servo_read"></block>
-             <sep gap="20"></sep>
-             <label text="Stepper Motors" web-class="toolbox-label"></label>
+             <sep gap="20"></sep> <label text="Stepper Motors" web-class="toolbox-label"></label>
              <block type="stepper_setup_2pin"> <field name="STEPS">2048</field> </block>
              <block type="stepper_setup_4pin"> <field name="STEPS">2048</field> </block>
-             <block type="stepper_set_speed"> <value name="SPEED"> <shadow type="math_number"><field name="NUM">60</field></shadow> </value> </block>
+             <block type="stepper_set_speed"> <field name="SPEED">60</field> </block>
              <block type="stepper_step"> <value name="STEPS"> <shadow type="math_number"><field name="NUM">100</field></shadow> </value> </block>
         </category>
         <category name="Logic" colour="210"> <block type="controls_if"></block> <block type="logic_compare"></block> <block type="logic_operation"></block> <block type="logic_negate"></block> <block type="logic_boolean"></block> </category>
@@ -78,8 +75,7 @@
         <category name="Variables" colour="330" custom="VARIABLE"></category>
         <category name="Functions" colour="290" custom="PROCEDURE"></category>
         <sep></sep>
-        <category name="Sensors" colour="40">
-            <block type="sensor_light_condition"> <field name="STATE">DARK</field> </block>
+        <category name="Sensors" colour="40"> <block type="sensor_light_condition"> <field name="STATE">DARK</field> </block>
             <block type="sensor_light_value"> </block>
             <block type="sensor_potentiometer"> <field name="UNIT">VALUE</field> </block>
             <label text="Ultrasonic Sensor" web-class="toolbox-label"></label>
@@ -102,7 +98,10 @@
 
     <script src="libs/generator/arduino_generator_init.js"></script>
 
-    <script src="app.js"></script>       <script src="app_sensor.js"></script> <script src="app_motors.js"></script> <script src="libs/generator/structure.js" defer></script>
+    <script src="app.js"></script>
+    <script src="app_sensor.js"></script>
+    <script src="app_motors.js"></script>
+    <script src="libs/generator/structure.js" defer></script>
     <script src="libs/generator/logic.js" defer></script>
     <script src="libs/generator/loops.js" defer></script>
     <script src="libs/generator/math.js" defer></script>
