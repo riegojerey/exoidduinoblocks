@@ -6,6 +6,7 @@
 /**
  * @fileoverview Arduino code generator for Servo library blocks.
  * Based on the Ardublockly project generator.
+ * Updated to use Blockly.Variables.getVariable for variable names.
  */
 'use strict';
 
@@ -13,103 +14,81 @@ if (typeof Blockly === 'undefined' || !Blockly.Arduino) {
   throw new Error('Blockly or Blockly.Arduino is not loaded!');
 }
 
-// --- NEW APPROACH: Helper function to get clean variable name ---
-// (We get the variable object from the field first)
-function getCleanVariableName(block, fieldName) {
-  const variableField = block.getField(fieldName);
-  if (!variableField) {
-    console.error(`Field "${fieldName}" not found on block ${block.type}`);
-    return 'UNKNOWN_VAR'; // Or throw an error
-  }
-  const variable = variableField.getVariable();
-  if (!variable) {
-    // This can happen if the variable was deleted after the block was created
-    // or if the field is somehow misconfigured.
-    // We might fall back to the field's text value as a last resort,
-    // but it's better to handle this case explicitly.
-    console.warn(`Variable not found for field "${fieldName}" on block ${block.type}. Using field text as fallback.`);
-    // Fallback to text value, but this might not be the canonical variable name
-    return block.getFieldValue(fieldName) || 'MISSING_VAR';
-  }
-  // --- Using the direct name from the variable object ---
-  // WARNING: This name might not be safe for C++ identifiers (e.g., contain spaces)
-  // The original code used nameDB_.getName() for sanitization.
-  return variable.name;
-}
-// --- End Helper ---
-
 
 // Attach block
 Blockly.Arduino['servo_attach'] = function(block) {
-  // 1) Get the variable object's clean name
-  const cleanVarName = getCleanVariableName(block, 'SERVO_VAR');
+  // Get the variable object using the field value (which is the variable ID)
+  var variable = Blockly.Variables.getVariable(block.workspace, block.getFieldValue('SERVO_VAR'));
+  if (!variable) { return '// ERROR: Servo variable not found!\n'; }
+  var userVariableName = variable.name; // Get the user-friendly name
 
-  // 2) Build a distinct servo object name based on the clean name:
-  //    e.g. MyServo -> servo_MyServo
-  //    WARNING: If cleanVarName is "My Servo", this becomes "servo_My Servo" (Invalid C++)
-  const servoObj = 'servo_' + cleanVarName;
+  // Create a C++ safe version of the variable name for the object
+  var cleanVarName = userVariableName.replace(/[^a-zA-Z0-9_]/g, '_');
+  var servoObjName = 'servo_' + cleanVarName; // e.g., servo_myServo
 
-  const pin = block.getFieldValue('PIN');
+  var pin = block.getFieldValue('PIN');
 
-  // 3) Make sure Servo.h is always included once:
+  // Include the Servo library header
   Blockly.Arduino.definitions_['include_servo'] = '#include <Servo.h>';
 
-  // 4) Declare your Servo object exactly once, using the clean name for the key
-  Blockly.Arduino.definitions_['servo_obj_' + cleanVarName] =
-    `Servo ${servoObj};`;
+  // Declare the Servo object instance using the clean variable name
+  Blockly.Arduino.definitions_['var_servo_' + cleanVarName] = `Servo ${servoObjName};`;
 
-  // 5) In setup(), attach it, using the clean name for the key:
-  Blockly.Arduino.setups_['servo_attach_' + cleanVarName] =
-    `${servoObj}.attach(${pin});`;
+  // Add the attach code to the setup section
+  Blockly.Arduino.setups_['setup_servo_' + cleanVarName] = `${servoObjName}.attach(${pin});`;
 
-  // This block itself emits no inline code:
-  return '';
+  return ''; // This block only affects definitions and setup
 };
 
 // Detach block
 Blockly.Arduino['servo_detach'] = function(block) {
-  const cleanVarName = getCleanVariableName(block, 'SERVO_VAR');
-  const servoObj = 'servo_' + cleanVarName; // WARNING: Potential C++ naming issue
+  var variable = Blockly.Variables.getVariable(block.workspace, block.getFieldValue('SERVO_VAR'));
+  if (!variable) { return '// ERROR: Servo variable not found!\n'; }
+  var userVariableName = variable.name;
+  var cleanVarName = userVariableName.replace(/[^a-zA-Z0-9_]/g, '_');
+  var servoObjName = 'servo_' + cleanVarName;
 
   // Check if the declaration exists using the clean name key
-  if (!Blockly.Arduino.definitions_['servo_obj_' + cleanVarName]) {
-    console.warn(
-      `Servo detach used on "${cleanVarName}" but no Servo object was declared.`
-    );
-    return `// ERROR: no Servo declared for ${cleanVarName}\n`;
+  if (!Blockly.Arduino.definitions_['var_servo_' + cleanVarName]) {
+    console.warn(`Servo detach used on "${userVariableName}" but no Servo object was declared.`);
+    return `// ERROR: no Servo declared for ${userVariableName}\n`;
   }
-  return `${servoObj}.detach();\n`;
+  return `${servoObjName}.detach();\n`;
 };
 
 // Write block
 Blockly.Arduino['servo_write'] = function(block) {
-  const cleanVarName = getCleanVariableName(block, 'SERVO_VAR');
-  const servoObj = 'servo_' + cleanVarName; // WARNING: Potential C++ naming issue
-  const angle = Blockly.Arduino.valueToCode(
+  var variable = Blockly.Variables.getVariable(block.workspace, block.getFieldValue('SERVO_VAR'));
+   if (!variable) { return '// ERROR: Servo variable not found!\n'; }
+  var userVariableName = variable.name;
+  var cleanVarName = userVariableName.replace(/[^a-zA-Z0-9_]/g, '_');
+  var servoObjName = 'servo_' + cleanVarName;
+
+  var angle = Blockly.Arduino.valueToCode(
     block, 'DEGREE', Blockly.Arduino.ORDER_ATOMIC
   ) || '90';
 
   // Check if the declaration exists using the clean name key
-  if (!Blockly.Arduino.definitions_['servo_obj_' + cleanVarName]) {
-    console.warn(`Servo write used on "${cleanVarName}" but no declaration found.`);
-    return `// ERROR: no Servo declared for ${cleanVarName}\n`;
+  if (!Blockly.Arduino.definitions_['var_servo_' + cleanVarName]) {
+    console.warn(`Servo write used on "${userVariableName}" but no declaration found.`);
+    return `// ERROR: no Servo declared for ${userVariableName}\n`;
   }
-  return `${servoObj}.write(${angle});\n`;
+  return `${servoObjName}.write(${angle});\n`;
 };
 
 // Read block
 Blockly.Arduino['servo_read'] = function(block) {
-  const cleanVarName = getCleanVariableName(block, 'SERVO_VAR');
-  const servoObj = 'servo_' + cleanVarName; // WARNING: Potential C++ naming issue
+  var variable = Blockly.Variables.getVariable(block.workspace, block.getFieldValue('SERVO_VAR'));
+   if (!variable) { return ['/* ERROR: Servo variable not found! */ 0', Blockly.Arduino.ORDER_ATOMIC]; }
+  var userVariableName = variable.name;
+  var cleanVarName = userVariableName.replace(/[^a-zA-Z0-9_]/g, '_');
+  var servoObjName = 'servo_' + cleanVarName;
 
   // Check if the declaration exists using the clean name key
-  if (!Blockly.Arduino.definitions_['servo_obj_' + cleanVarName]) {
-    console.warn(`Servo read used on "${cleanVarName}" but no declaration found.`);
-    return [
-      `/* ERROR: no Servo declared for ${cleanVarName} */ 0`, // Return 0 or similar default
-      Blockly.Arduino.ORDER_ATOMIC
-    ];
+  if (!Blockly.Arduino.definitions_['var_servo_' + cleanVarName]) {
+    console.warn(`Servo read used on "${userVariableName}" but no declaration found.`);
+    return [ `/* ERROR: no Servo declared for ${userVariableName} */ 0`, Blockly.Arduino.ORDER_ATOMIC ];
   }
-  const code = `${servoObj}.read()`;
-  return [code, Blockly.Arduino.ORDER_FUNCTION_CALL]; // .read() is a function call
+  const code = `${servoObjName}.read()`;
+  return [code, Blockly.Arduino.ORDER_UNARY_POSTFIX]; // .read() is a function call
 };

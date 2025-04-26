@@ -2,6 +2,7 @@
  * @license
  * Initializes the custom Arduino generator for Blockly. (Simplified & Fixed)
  * Organizes output code with includes first, then definitions.
+ * Removed automatic variable declaration from init.
  */
 'use strict';
 
@@ -74,13 +75,17 @@ function initializeArduinoGenerator() {
 
         Blockly.Arduino.nameDB_.setVariableMap(workspace.getVariableMap());
 
-        // Process developer variables
+        // Process developer variables (if any) - just to ensure they are tracked
         var devVarList = Blockly.Variables.allDeveloperVariables(workspace);
         for (var i = 0; i < devVarList.length; i++) {
             Blockly.Arduino.nameDB_.getName(devVarList[i], nameDbType);
         }
 
-        // Process user variables and generate declarations
+        // --- REMOVED Automatic Variable Declaration ---
+        // The specific block generators (variables_set, procedures_def*)
+        // or setup blocks (servo_attach, stepper_setup) should handle
+        // adding necessary declarations to Blockly.Arduino.definitions_
+        /*
          var variables = Blockly.Variables.allUsedVarModels(workspace);
          var variableDeclarations = [];
          for (var i = 0; i < variables.length; i++) {
@@ -92,9 +97,9 @@ function initializeArduinoGenerator() {
              variableDeclarations.push(varType + ' ' + varName + ';');
          }
          if (variableDeclarations.length > 0) {
-             // Store variable declarations under a specific key
              Blockly.Arduino.definitions_['variables'] = variableDeclarations.join('\n');
          }
+        */
          // Reset setups at the start of init
          Blockly.Arduino.setups_ = {};
     };
@@ -111,38 +116,25 @@ function initializeArduinoGenerator() {
         for (var name in Blockly.Arduino.definitions_) {
             var def = Blockly.Arduino.definitions_[name];
             if (name.startsWith('include_')) { // Convention for includes
-                // Avoid duplicates
-                if (includes.indexOf(def) === -1) {
-                     includes.push(def);
-                }
-            } else if (name === 'variables') { // Handle variables separately if needed, or keep with definitions
-                 definitions.unshift(def); // Put variable defs at the start of definitions
+                if (includes.indexOf(def) === -1) { includes.push(def); }
+            } else if (name === 'variables') { // Handle variables separately if needed
+                 definitions.unshift(def); // Put variable defs at the start
             } else if (Blockly.Arduino.functionNames_[name]) { // Check if it's a known function name
-                 // Avoid duplicates
-                 if (functions.indexOf(def) === -1) {
-                    functions.push(def);
-                 }
+                 if (functions.indexOf(def) === -1) { functions.push(def); }
             }
              else {
-                 // Avoid duplicates
-                if (definitions.indexOf(def) === -1) {
-                    definitions.push(def);
-                }
+                if (definitions.indexOf(def) === -1) { definitions.push(def); }
             }
         }
 
         var setups = [];
-        for (var name in Blockly.Arduino.setups_) {
-            setups.push(Blockly.Arduino.setups_[name]);
-        }
+        for (var name in Blockly.Arduino.setups_) { setups.push(Blockly.Arduino.setups_[name]); }
 
         // Clean up temporary data
-        Blockly.Arduino.definitions_ = null;
-        Blockly.Arduino.setups_ = null;
-        Blockly.Arduino.functionNames_ = null;
+        var tempDefinitions = Blockly.Arduino.definitions_; var tempSetups = Blockly.Arduino.setups_; var tempFunctionNames = Blockly.Arduino.functionNames_;
+        Blockly.Arduino.definitions_ = null; Blockly.Arduino.setups_ = null; Blockly.Arduino.functionNames_ = null;
         if (Blockly.Arduino.nameDB_) Blockly.Arduino.nameDB_.reset();
 
-        // Assemble the code sections
         var includesCode = includes.join('\n');
         var definitionsCode = definitions.join('\n\n'); // Add blank line between definitions
         var functionsCode = functions.join('\n\n'); // Add blank line between functions
@@ -152,13 +144,18 @@ function initializeArduinoGenerator() {
         // Build the final sketch structure
         var finalCode = '';
         if (includesCode) finalCode += includesCode + '\n\n';
-        if (definitionsCode) finalCode += definitionsCode + '\n\n';
+        if (definitionsCode) finalCode += definitionsCode.trim() + '\n\n'; // Trim potential extra newlines
         if (functionsCode) finalCode += functionsCode + '\n\n'; // Place functions before setup/loop
 
         finalCode += 'void setup() {\n' + setupCode + '\n}\n\n';
         finalCode += 'void loop() {\n' + loopCode + '\n}';
 
-        // Ensure Arduino.h is included if not already present (optional safety check)
+        // Restore for potential reuse (less critical now)
+        Blockly.Arduino.definitions_ = tempDefinitions;
+        Blockly.Arduino.setups_ = tempSetups;
+        Blockly.Arduino.functionNames_ = Object.create(null);
+
+        // Ensure Arduino.h is included if not already present
         if (!finalCode.startsWith('#include <Arduino.h>') && !includes.includes('#include <Arduino.h>')) {
              finalCode = '#include <Arduino.h>\n' + finalCode;
         }
@@ -228,12 +225,9 @@ function initializeArduinoGenerator() {
 } // End of initializeArduinoGenerator function definition
 
 // --- Call the Initializer ---
-// Check if Blockly is ready immediately. If so, call the initializer.
-// If not (e.g., due to script loading order), wait for window.onload.
 if (typeof Blockly !== 'undefined' && typeof Blockly.Generator !== 'undefined') {
     initializeArduinoGenerator();
 } else {
     console.warn("Blockly core not ready when init script ran, delaying Arduino generator initialization until window load.");
-    // Add listener to call the function *after* everything else has loaded
     window.addEventListener('load', initializeArduinoGenerator);
 }
