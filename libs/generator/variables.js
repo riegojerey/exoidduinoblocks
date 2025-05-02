@@ -100,7 +100,19 @@ Blockly.Arduino['variables_change'] = function(block) {
         Blockly.Arduino.definitions_['variables'] += `\ndouble ${varName} = 0.0;  // Variable declaration`;
     }
     
-    return varName + ' = ' + varName + ' + ' + argument0 + ';\n';
+    // For variables that are already declared, we need to determine if this is in setup or loop
+    var parentBlock = block.getParent();
+    while (parentBlock) {
+        if (parentBlock.type === 'arduino_setup') {
+            // If in setup, add to setups_
+            Blockly.Arduino.setups_['set_var_' + varName] = `  ${varName} = ${varName} + ${argument0};`;
+            return '';
+        }
+        parentBlock = parentBlock.getParent();
+    }
+
+    // If not in setup, it's a regular assignment in loop or other context
+    return `${varName} = ${varName} + ${argument0};\n`;
 };
 
 // Integer variable setter block
@@ -166,7 +178,19 @@ Blockly.Arduino['variables_set_int'] = function(block) {
         return '';  // No need to generate assignment code since it's in declaration
     }
 
-    return varName + ' = ' + argument0 + ';\n';
+    // For variables that are already declared, we need to determine if this is in setup or loop
+    var parentBlock = block.getParent();
+    while (parentBlock) {
+        if (parentBlock.type === 'arduino_setup') {
+            // If in setup, add to setups_
+            Blockly.Arduino.setups_['set_var_' + varName] = `  ${varName} = ${argument0};`;
+            return '';
+        }
+        parentBlock = parentBlock.getParent();
+    }
+
+    // If not in setup, it's a regular assignment in loop or other context
+    return `${varName} = ${argument0};\n`;
 };
 
 // Generator for double variable setter
@@ -184,7 +208,19 @@ Blockly.Arduino['variables_set_double'] = function(block) {
         return '';  // No need to generate assignment code since it's in declaration
     }
 
-    return varName + ' = ' + argument0 + ';\n';
+    // For variables that are already declared, we need to determine if this is in setup or loop
+    var parentBlock = block.getParent();
+    while (parentBlock) {
+        if (parentBlock.type === 'arduino_setup') {
+            // If in setup, add to setups_
+            Blockly.Arduino.setups_['set_var_' + varName] = `  ${varName} = ${argument0};`;
+            return '';
+        }
+        parentBlock = parentBlock.getParent();
+    }
+
+    // If not in setup, it's a regular assignment in loop or other context
+    return `${varName} = ${argument0};\n`;
 };
 
 // Generator for string variable setter
@@ -202,5 +238,17 @@ Blockly.Arduino['variables_set_string'] = function(block) {
         return '';  // No need to generate assignment code since it's in declaration
     }
 
-    return varName + ' = String(' + argument0 + ');\n';
+    // For variables that are already declared, we need to determine if this is in setup or loop
+    var parentBlock = block.getParent();
+    while (parentBlock) {
+        if (parentBlock.type === 'arduino_setup') {
+            // If in setup, add to setups_
+            Blockly.Arduino.setups_['set_var_' + varName] = `  ${varName} = String(${argument0});`;
+            return '';
+        }
+        parentBlock = parentBlock.getParent();
+    }
+
+    // If not in setup, it's a regular assignment in loop or other context
+    return `${varName} = String(${argument0});\n`;
 };
