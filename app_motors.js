@@ -62,9 +62,20 @@ function defineMotorBlocks() {
     // --- L298N Set Speed Block ---
     Blockly.Blocks['l298n_set_speed'] = {
       init: function() {
-        this.appendDummyInput().appendField("Set L298N").appendField(new Blockly.FieldVariable("myL298N"), "VAR").appendField("Motor").appendField(new Blockly.FieldDropdown([["A","A"], ["B","B"]]), "MOTOR_CHOICE");
-        this.appendDummyInput().appendField("Speed to").appendField(new Blockly.FieldNumber(255, 0, 255), "SPEED");
-        this.setInputsInline(true); this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(MOTOR_HUE); this.setTooltip("Sets the speed (0-255) of a specific motor (A or B) connected to the L298N."); this.setHelpUrl("");
+        this.appendDummyInput()
+            .appendField("Set L298N")
+            .appendField(new Blockly.FieldVariable("myL298N"), "VAR")
+            .appendField("Motor")
+            .appendField(new Blockly.FieldDropdown([["A","A"], ["B","B"]]), "MOTOR_CHOICE");
+        this.appendValueInput("SPEED")
+            .setCheck("Number")
+            .appendField("Speed to");
+        this.setInputsInline(true);
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(MOTOR_HUE);
+        this.setTooltip("Sets the speed (0-255) of a specific motor (A or B) connected to the L298N.");
+        this.setHelpUrl("");
       }
     };
 

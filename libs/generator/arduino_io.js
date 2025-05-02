@@ -1,67 +1,293 @@
 /**
  * @license
- * Arduino code generator for Arduino IO blocks.
- * Updated for Field Inputs & PWM block.
+ * Arduino code generator for Input/Output blocks.
+ * Designed for kids' block programming.
  */
+
 'use strict';
 
-// Ensure Blockly and the Arduino generator are loaded
+// Ensure Blockly and Arduino generator are loaded
 if (typeof Blockly === 'undefined' || !Blockly.Arduino) {
-    throw new Error('Blockly or Blockly.Arduino is not loaded!');
+    throw new Error('Blockly and Arduino generator must be loaded first!');
 }
 
+// Helper function to validate pin numbers
+function validatePin(pin, isAnalog = false) {
+    if (isAnalog) {
+        // For analog pins, check if it's in format A0-A5
+        if (!/^A[0-5]$/.test(pin)) {
+            throw new Error(`Invalid analog pin: ${pin}. Must be A0-A5.`);
+        }
+    } else {
+        // For digital pins, check if it's a valid number
+        const pinNum = parseInt(pin);
+        if (isNaN(pinNum) || pinNum < 0 || pinNum > 53) {
+            throw new Error(`Invalid digital pin: ${pin}. Must be 0-53.`);
+        }
+    }
+    return pin;
+}
+
+// Helper function to validate PWM values
+function validatePWM(value) {
+    const num = parseInt(value);
+    if (isNaN(num) || num < 0 || num > 255) {
+        throw new Error(`Invalid PWM value: ${value}. Must be 0-255.`);
+    }
+    return num;
+}
+
+// Digital Write Generator
 Blockly.Arduino['io_digitalwrite'] = function(block) {
-  // Get value directly from the field instead of an input block
-  var pin = block.getFieldValue('PIN') || '13';
-  var value = block.getFieldValue('STATE') || 'HIGH';
-  // pinMode configuration should be handled by the io_pinmode block in the setup section
-  return `digitalWrite(${pin}, ${value});\n`;
+    var pin = Blockly.Arduino.valueToCode(block, 'PIN', Blockly.Arduino.ORDER_ATOMIC) || '13';
+    var state = Blockly.Arduino.valueToCode(block, 'STATE', Blockly.Arduino.ORDER_ATOMIC) || 'LOW';
+    
+    try {
+        validatePin(pin);
+        if (state !== 'HIGH' && state !== 'LOW') {
+            throw new Error(`Invalid state: ${state}. Must be HIGH or LOW.`);
+        }
+        return `digitalWrite(${pin}, ${state});\n`;
+    } catch (e) {
+        console.error(e.message);
+        return `// Error: ${e.message}\n`;
+    }
 };
 
+// Digital Read Generator
 Blockly.Arduino['io_digitalread'] = function(block) {
-  // Get value directly from the field
-  var pin = block.getFieldValue('PIN') || '2';
-  // pinMode configuration should be handled by the io_pinmode block in the setup section
-  return [`digitalRead(${pin})`, Blockly.Arduino.ORDER_ATOMIC];
+    var pin = Blockly.Arduino.valueToCode(block, 'PIN', Blockly.Arduino.ORDER_ATOMIC) || '2';
+    
+    try {
+        validatePin(pin);
+        return [`digitalRead(${pin})`, Blockly.Arduino.ORDER_ATOMIC];
+    } catch (e) {
+        console.error(e.message);
+        return ['0', Blockly.Arduino.ORDER_ATOMIC];
+    }
 };
 
-// Generator for the NEW PWM block
+// PWM Write Generator
 Blockly.Arduino['io_pwm_write'] = function(block) {
-  var pin = block.getFieldValue('PIN') || '3'; // Get pin from dropdown
-  var value = Blockly.Arduino.valueToCode(block, 'VALUE', Blockly.Arduino.ORDER_ATOMIC) || '128';
-  // pinMode configuration should be handled by the io_pinmode block in the setup section
-  return `analogWrite(${pin}, ${value});\n`;
+    var pin = Blockly.Arduino.valueToCode(block, 'PIN', Blockly.Arduino.ORDER_ATOMIC) || '3';
+    var value = Blockly.Arduino.valueToCode(block, 'VALUE', Blockly.Arduino.ORDER_ATOMIC) || '128';
+    
+    try {
+        validatePin(pin);
+        const pwmValue = validatePWM(value);
+        return `analogWrite(${pin}, ${pwmValue});\n`;
+    } catch (e) {
+        console.error(e.message);
+        return `// Error: ${e.message}\n`;
+    }
 };
 
-// Keep old generator for compatibility if old blocks exist in saved workspaces
-// This assumes the old block also had a field 'PIN' if it was modified.
-// If the old block used a VALUE input for PIN, this would need adjustment.
-Blockly.Arduino['io_analogwrite'] = function(block) {
-  var pin = block.getFieldValue('PIN') || '3'; // Get value from field
-  var value = Blockly.Arduino.valueToCode(block, 'VALUE', Blockly.Arduino.ORDER_ATOMIC) || '128';
-  return `analogWrite(${pin}, ${value});\n`;
-};
-
-
+// Analog Read Generator
 Blockly.Arduino['io_analogread'] = function(block) {
-  // Get pin value directly from the dropdown field
-  var pin = block.getFieldValue('PIN') || 'A0';
-  // pinMode is not required for analog inputs
-  return [`analogRead(${pin})`, Blockly.Arduino.ORDER_ATOMIC];
+    var pin = Blockly.Arduino.valueToCode(block, 'PIN', Blockly.Arduino.ORDER_ATOMIC) || 'A0';
+    
+    try {
+        validatePin(pin, true);
+        return [`analogRead(${pin})`, Blockly.Arduino.ORDER_ATOMIC];
+    } catch (e) {
+        console.error(e.message);
+        return ['0', Blockly.Arduino.ORDER_ATOMIC];
+    }
 };
 
-// This block provides the HIGH/LOW constants
-Blockly.Arduino['io_highlow'] = function(block) {
-  return [block.getFieldValue('STATE'), Blockly.Arduino.ORDER_ATOMIC];
+// Pin Mode Generator with Variable
+Blockly.Arduino['io_pinmode_var'] = function(block) {
+    var pin = block.getFieldValue('PIN');
+    var mode = block.getFieldValue('MODE');
+    
+    try {
+        // Get the actual variable name from the workspace
+        var variable = Blockly.Variables.getVariable(block.workspace, pin);
+        if (variable) {
+            pin = variable.name;
+        }
+        
+        if (mode !== 'INPUT' && mode !== 'OUTPUT' && mode !== 'INPUT_PULLUP') {
+            throw new Error(`Invalid mode: ${mode}. Must be INPUT, OUTPUT, or INPUT_PULLUP.`);
+        }
+        
+        // Add to setup section
+        Blockly.Arduino.setups_[`setup_pin_${pin}`] = `pinMode(${pin}, ${mode});`;
+        return ''; // No code in loop section
+    } catch (e) {
+        console.error(e.message);
+        return `// Error: ${e.message}\n`;
+    }
 };
 
-Blockly.Arduino['io_pinmode'] = function(block) {
-  // Get values directly from the fields
-  var pin = block.getFieldValue('PIN') || '13';
-  var mode = block.getFieldValue('MODE');
-  // Add the pinMode command to the setup section of the generated code
-  Blockly.Arduino.setups_['setup_pinmode_' + pin] = `pinMode(${pin}, ${mode});`;
-  return ''; // This block only affects the setup, doesn't generate code in the loop
+// Pin Mode Generator with Direct Number
+Blockly.Arduino['io_pinmode_num'] = function(block) {
+    var pin = Blockly.Arduino.valueToCode(block, 'PIN', Blockly.Arduino.ORDER_ATOMIC) || '13';
+    var mode = block.getFieldValue('MODE');
+    
+    try {
+        validatePin(pin);
+        
+        if (mode !== 'INPUT' && mode !== 'OUTPUT' && mode !== 'INPUT_PULLUP') {
+            throw new Error(`Invalid mode: ${mode}. Must be INPUT, OUTPUT, or INPUT_PULLUP.`);
+        }
+        
+        // Add to setup section
+        Blockly.Arduino.setups_[`setup_pin_${pin}`] = `pinMode(${pin}, ${mode});`;
+        return ''; // No code in loop section
+    } catch (e) {
+        console.error(e.message);
+        return `// Error: ${e.message}\n`;
+    }
 };
 
-// Note: The Blink block generator is in libs/generator/custom/blink.js
+// Digital State Generator
+Blockly.Arduino['io_digital_state'] = function(block) {
+    return [block.getFieldValue('STATE'), Blockly.Arduino.ORDER_ATOMIC];
+};
+
+// Pin Mode Options Generator
+Blockly.Arduino['io_pin_mode'] = function(block) {
+    return [block.getFieldValue('MODE'), Blockly.Arduino.ORDER_ATOMIC];
+};
+
+// Analog Pin Generator
+Blockly.Arduino['io_analog_pin'] = function(block) {
+    return [block.getFieldValue('PIN'), Blockly.Arduino.ORDER_ATOMIC];
+};
+
+// Digital Write Generator with Variable
+Blockly.Arduino['io_digitalwrite_var'] = function(block) {
+    var pin = block.getFieldValue('PIN');
+    var state = Blockly.Arduino.valueToCode(block, 'STATE', Blockly.Arduino.ORDER_ATOMIC) || 'LOW';
+    
+    try {
+        // Get the actual variable name from the workspace
+        var variable = Blockly.Variables.getVariable(block.workspace, pin);
+        if (variable) {
+            pin = variable.name;
+        }
+        
+        if (state !== 'HIGH' && state !== 'LOW') {
+            throw new Error(`Invalid state: ${state}. Must be HIGH or LOW.`);
+        }
+        return `digitalWrite(${pin}, ${state});\n`;
+    } catch (e) {
+        console.error(e.message);
+        return `// Error: ${e.message}\n`;
+    }
+};
+
+// Digital Write Generator with Number
+Blockly.Arduino['io_digitalwrite_num'] = function(block) {
+    var pin = Blockly.Arduino.valueToCode(block, 'PIN', Blockly.Arduino.ORDER_ATOMIC) || '13';
+    var state = Blockly.Arduino.valueToCode(block, 'STATE', Blockly.Arduino.ORDER_ATOMIC) || 'LOW';
+    
+    try {
+        validatePin(pin);
+        if (state !== 'HIGH' && state !== 'LOW') {
+            throw new Error(`Invalid state: ${state}. Must be HIGH or LOW.`);
+        }
+        return `digitalWrite(${pin}, ${state});\n`;
+    } catch (e) {
+        console.error(e.message);
+        return `// Error: ${e.message}\n`;
+    }
+};
+
+// PWM Write Generator with Variable
+Blockly.Arduino['io_pwm_write_var'] = function(block) {
+    var pin = block.getFieldValue('PIN');
+    var value = Blockly.Arduino.valueToCode(block, 'VALUE', Blockly.Arduino.ORDER_ATOMIC) || '128';
+    
+    try {
+        // Get the actual variable name from the workspace
+        var variable = Blockly.Variables.getVariable(block.workspace, pin);
+        if (variable) {
+            pin = variable.name;
+        }
+        
+        const pwmValue = validatePWM(value);
+        return `analogWrite(${pin}, ${pwmValue});\n`;
+    } catch (e) {
+        console.error(e.message);
+        return `// Error: ${e.message}\n`;
+    }
+};
+
+// PWM Write Generator with Number
+Blockly.Arduino['io_pwm_write_num'] = function(block) {
+    var pin = Blockly.Arduino.valueToCode(block, 'PIN', Blockly.Arduino.ORDER_ATOMIC) || '3';
+    var value = Blockly.Arduino.valueToCode(block, 'VALUE', Blockly.Arduino.ORDER_ATOMIC) || '128';
+    
+    try {
+        validatePin(pin);
+        const pwmValue = validatePWM(value);
+        return `analogWrite(${pin}, ${pwmValue});\n`;
+    } catch (e) {
+        console.error(e.message);
+        return `// Error: ${e.message}\n`;
+    }
+};
+
+// Digital Read Generator with Variable
+Blockly.Arduino['io_digitalread_var'] = function(block) {
+    var pin = block.getFieldValue('PIN');
+    
+    try {
+        // Get the actual variable name from the workspace
+        var variable = Blockly.Variables.getVariable(block.workspace, pin);
+        if (variable) {
+            pin = variable.name;
+        }
+        
+        return [`digitalRead(${pin})`, Blockly.Arduino.ORDER_ATOMIC];
+    } catch (e) {
+        console.error(e.message);
+        return ['0', Blockly.Arduino.ORDER_ATOMIC];
+    }
+};
+
+// Digital Read Generator with Number
+Blockly.Arduino['io_digitalread_num'] = function(block) {
+    var pin = Blockly.Arduino.valueToCode(block, 'PIN', Blockly.Arduino.ORDER_ATOMIC) || '2';
+    
+    try {
+        validatePin(pin);
+        return [`digitalRead(${pin})`, Blockly.Arduino.ORDER_ATOMIC];
+    } catch (e) {
+        console.error(e.message);
+        return ['0', Blockly.Arduino.ORDER_ATOMIC];
+    }
+};
+
+// Analog Read Generator with Variable
+Blockly.Arduino['io_analogread_var'] = function(block) {
+    var pin = block.getFieldValue('PIN');
+    
+    try {
+        // Get the actual variable name from the workspace
+        var variable = Blockly.Variables.getVariable(block.workspace, pin);
+        if (variable) {
+            pin = variable.name;
+        }
+        
+        return [`analogRead(${pin})`, Blockly.Arduino.ORDER_ATOMIC];
+    } catch (e) {
+        console.error(e.message);
+        return ['0', Blockly.Arduino.ORDER_ATOMIC];
+    }
+};
+
+// Analog Read Generator with Number
+Blockly.Arduino['io_analogread_num'] = function(block) {
+    var pin = Blockly.Arduino.valueToCode(block, 'PIN', Blockly.Arduino.ORDER_ATOMIC) || 'A0';
+    
+    try {
+        validatePin(pin, true);
+        return [`analogRead(${pin})`, Blockly.Arduino.ORDER_ATOMIC];
+    } catch (e) {
+        console.error(e.message);
+        return ['0', Blockly.Arduino.ORDER_ATOMIC];
+    }
+}; 

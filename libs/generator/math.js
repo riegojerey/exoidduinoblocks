@@ -8,6 +8,25 @@ if (typeof Blockly === 'undefined' || !Blockly.Arduino) {
     throw new Error('Blockly or Blockly.Arduino is not loaded!');
 }
 
+// Define the absolute value block
+Blockly.Blocks['math_abs'] = {
+  init: function() {
+    this.appendValueInput('NUM')
+        .setCheck('Number')
+        .appendField('absolute value of');
+    this.setOutput(true, 'Number');
+    this.setColour(230);
+    this.setTooltip('Returns the absolute value of a number (removes the sign).');
+    this.setHelpUrl('');
+  }
+};
+
+// Generator for absolute value block
+Blockly.Arduino['math_abs'] = function(block) {
+  var argument0 = Blockly.Arduino.valueToCode(block, 'NUM', Blockly.Arduino.ORDER_UNARY_PREFIX) || '0';
+  return ['abs(' + argument0 + ')', Blockly.Arduino.ORDER_UNARY_POSTFIX];
+};
+
 Blockly.Arduino['math_number'] = function(block) {
   var code = Number(block.getFieldValue('NUM'));
   var order = code < 0 ? Blockly.Arduino.ORDER_UNARY_PREFIX : Blockly.Arduino.ORDER_ATOMIC;

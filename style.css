@@ -230,3 +230,22 @@ header h1 {
     #uploadButton, #serialButton { min-width: 70px; }
     #refreshPortsButton { min-width: 30px; padding: 5px 6px;}
 }
+
+#cleanupButton, #resetButton {
+    background-color: #4a4a4a;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-left: 5px;
+    transition: background-color 0.3s;
+}
+
+#cleanupButton:hover {
+    background-color: #2c7d7b;
+}
+
+#resetButton:hover {
+    background-color: #7d2c2c;
+}

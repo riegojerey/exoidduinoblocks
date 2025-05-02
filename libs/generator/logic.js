@@ -9,6 +9,33 @@ if (typeof Blockly === 'undefined' || !Blockly.Arduino) {
     throw new Error('Blockly or Blockly.Arduino is not loaded!');
 }
 
+// Define the if-else block
+Blockly.Blocks['logic_if_else'] = {
+  init: function() {
+    this.appendValueInput('IF')
+        .setCheck('Boolean')
+        .appendField('if');
+    this.appendStatementInput('DO')
+        .appendField('do');
+    this.appendStatementInput('ELSE')
+        .appendField('else');
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(210);
+    this.setTooltip('If the condition is true, do the first block of statements. Otherwise, do the second block of statements.');
+    this.setHelpUrl('');
+  }
+};
+
+// Generator for if-else block
+Blockly.Arduino['logic_if_else'] = function(block) {
+  var condition = Blockly.Arduino.valueToCode(block, 'IF', Blockly.Arduino.ORDER_NONE) || 'false';
+  var doCode = Blockly.Arduino.statementToCode(block, 'DO');
+  var elseCode = Blockly.Arduino.statementToCode(block, 'ELSE');
+  
+  return 'if (' + condition + ') {\n' + doCode + '} else {\n' + elseCode + '}\n';
+};
+
 Blockly.Arduino['controls_if'] = function(block) {
   var n = 0; var code = '', branchCode, conditionCode;
   do {

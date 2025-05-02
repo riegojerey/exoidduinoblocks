@@ -16,6 +16,7 @@ let serialPort = null;
 let serialWriter = null;
 let serialReader = null;
 let selectedBoard = 'uno'; // Default board
+const WORKSPACE_VERSION = '1.0'; // Add version tracking
 
 // --- Board Pin Definitions ---
 const boardPins = {
@@ -79,11 +80,27 @@ function initialize() {
         disableElement('serialButton', true);
     }
 
+    // --- Ensure Arduino Generator is initialized ---
+    if (typeof Blockly === 'undefined') {
+        showStatus("Error: Blockly core not loaded.", "error");
+        return;
+    }
+    
+    if (typeof Blockly.Arduino === 'undefined' || !(Blockly.Arduino instanceof Blockly.Generator)) {
+        console.log("Arduino generator not initialized. Initializing now...");
+        try {
+            initializeArduinoGenerator();
+        } catch (e) {
+            console.error("Failed to initialize Arduino generator:", e);
+            showStatus("Error: Failed to initialize Arduino code generator.", "error");
+            return;
+        }
+    }
+
     // --- Register Block Definitions ---
-    defineAllBlocks(); // Defines Base, IO, Time, Serial, Blink, AND Sensors
-    // defineBaseBlocks(); // Renamed back for clarity
+    defineAllBlocks();
     if (typeof defineMotorBlocks === "function") {
-        defineMotorBlocks(); // Call function from app_motors.js
+        defineMotorBlocks();
     } else {
         console.error("defineMotorBlocks function not found. Ensure app_motors.js is loaded before app.js.");
         showStatus("Error: Motor block definitions failed to load.", "error");
@@ -99,17 +116,56 @@ function initialize() {
         theme: Blockly.Themes.Classic,
         grid: { spacing: 20, length: 3, colour: '#ccc', snap: true },
         zoom: { controls: true, wheel: true, startScale: 1.0, maxScale: 3, minScale: 0.3, scaleSpeed: 1.2 },
-        trashcan: true
+        maxInstances: {
+            'arduino_setup': 1,
+            'arduino_loop': 1
+        },
+        maxBlocks: 1000, // Prevent excessive block count
+        trashcan: true,
+        maxTrashcanContents: 50, // Limit undo stack size
+        move: {
+            scrollbars: true,
+            drag: true,
+            wheel: true
+        }
     };
 
     try {
-        // Crucial Check
-        if (typeof Blockly === 'undefined') { throw new Error("Blockly core library not loaded."); }
-        if (typeof Blockly.Arduino === 'undefined') { throw new Error("Arduino generator framework (arduino_generator_init.js) failed to load or define Blockly.Arduino."); }
-
         // Inject the workspace
         workspace = Blockly.inject(blocklyDiv, blocklyOptions);
         console.log("Blockly workspace injected.");
+
+        // Add default blocks with shadow blocks
+        const setupBlock = workspace.newBlock('arduino_setup');
+        setupBlock.initSvg();
+        setupBlock.render();
+
+        const loopBlock = workspace.newBlock('arduino_loop');
+        loopBlock.initSvg();
+        loopBlock.render();
+
+        // Load saved workspace if it exists
+        const savedWorkspace = localStorage.getItem('arduinoWorkspace');
+        if (savedWorkspace) {
+            try {
+                const workspaceData = JSON.parse(savedWorkspace);
+                // Check workspace version
+                if (workspaceData.version && workspaceData.version !== WORKSPACE_VERSION) {
+                    console.warn(`Workspace version mismatch: ${workspaceData.version} vs ${WORKSPACE_VERSION}`);
+                    showStatus("Workspace version mismatch. Some blocks may not work correctly.", "warning");
+                }
+                Blockly.serialization.workspaces.load(workspaceData, workspace);
+                console.log("Restored saved workspace");
+            } catch (e) {
+                console.error("Failed to restore workspace:", e);
+                showStatus("Failed to restore workspace: " + e.message, "error");
+                // If restore fails, proceed with default blocks
+                createDefaultBlocks();
+            }
+        } else {
+            // If no saved workspace, create default blocks
+            createDefaultBlocks();
+        }
 
     } catch (e) {
         console.error("Error injecting Blockly or prerequisites missing:", e);
@@ -120,10 +176,13 @@ function initialize() {
 
     // --- Setup Event Listeners ---
     workspace.addChangeListener(onWorkspaceChanged);
+    workspace.addChangeListener(saveWorkspace);
     boardSelector?.addEventListener('change', handleBoardChange);
     document.getElementById('refreshPortsButton')?.addEventListener('click', populatePortSelector);
     document.getElementById('uploadButton')?.addEventListener('click', handleUpload);
     document.getElementById('serialButton')?.addEventListener('click', handleSerialMonitor);
+    document.getElementById('cleanupButton')?.addEventListener('click', cleanupWorkspace);
+    document.getElementById('resetButton')?.addEventListener('click', resetWorkspace);
     window.addEventListener('resize', onResize, false);
     onResize();
 
@@ -156,7 +215,7 @@ function handleBoardChange(event) {
     // --- Update existing blocks ---
     if (workspace) {
         const blocksToUpdate = [
-            'io_digitalwrite', 'io_digitalread', 'io_pwm_write',
+            'io_digitalread', 'io_pwm_write',
             'io_analogread', 'io_pinmode',
             'sensor_light_condition', 'sensor_light_value', 'sensor_potentiometer',
             'sensor_ultrasonic_init', 'encoder_init',
@@ -225,24 +284,50 @@ function onWorkspaceChanged(event) {
  * Generates Arduino code from the workspace and updates the preview.
  */
 function generateCodeAndUpdatePreview() {
-     if (!workspace) return;
-    if (typeof Blockly.Arduino === 'undefined') { console.error("generateCodeAndUpdatePreview: Blockly.Arduino generator object not found!"); showStatus("Error: Arduino code generator failed.", "error"); return; }
+    if (!workspace) return;
+    
+    // Check if Arduino generator is properly initialized
+    if (typeof Blockly.Arduino === 'undefined' || !(Blockly.Arduino instanceof Blockly.Generator)) {
+        console.error("Arduino generator not properly initialized. Attempting to reinitialize...");
+        try {
+            initializeArduinoGenerator();
+        } catch (e) {
+            console.error("Failed to initialize Arduino generator:", e);
+            showStatus("Error: Arduino code generator failed to initialize.", "error");
+            return;
+        }
+    }
+
     try {
         currentCode = Blockly.Arduino.workspaceToCode(workspace);
         const codePreview = document.getElementById('codeDiv');
         if (codePreview) {
             codePreview.textContent = currentCode || '/* Add blocks to generate code */';
             if (window.Prism && typeof Prism.highlightElement === 'function' && Prism.languages && Prism.languages.clike && Prism.languages.cpp) {
-                 const elementToHighlight = document.getElementById('codeDiv');
-                 if (elementToHighlight) {
-                    try { Prism.highlightElement(elementToHighlight); console.log("Prism highlighting applied."); }
-                    catch(prismError) { console.error("Prism highlighting failed:", prismError); showStatus("Syntax highlighting error.", "warning"); }
-                 }
-            } else { console.warn("Prism or required languages not ready for highlighting."); }
-        } else { console.error("Code preview element ('codeDiv') not found."); }
+                const elementToHighlight = document.getElementById('codeDiv');
+                if (elementToHighlight) {
+                    try { 
+                        Prism.highlightElement(elementToHighlight); 
+                        console.log("Prism highlighting applied."); 
+                    } catch(prismError) { 
+                        console.error("Prism highlighting failed:", prismError); 
+                        showStatus("Syntax highlighting error.", "warning"); 
+                    }
+                }
+            } else { 
+                console.warn("Prism or required languages not ready for highlighting."); 
+            }
+        } else { 
+            console.error("Code preview element ('codeDiv') not found."); 
+        }
     } catch (e) {
-        console.error("Error generating Arduino code:", e); showStatus("Error generating code. See console for details.", "error");
-        const codePreview = document.getElementById('codeDiv'); if (codePreview) codePreview.textContent = `/* Error generating code: ${e.message}. Check blocks and console. */`; currentCode = '';
+        console.error("Error generating Arduino code:", e);
+        showStatus("Error generating code: " + e.message, "error");
+        const codePreview = document.getElementById('codeDiv');
+        if (codePreview) {
+            codePreview.textContent = `/* Error generating code: ${e.message}. Check blocks and console. */`;
+        }
+        currentCode = '';
     }
 }
 
@@ -450,12 +535,12 @@ function defineAllBlocks() { // Renamed from defineBaseBlocks
     Blockly.Blocks['arduino_loop'] = { init: function() { this.appendStatementInput("LOOP").appendField("Arduino Loop Forever"); this.setColour(ARDUINO_GENERAL_HUE); this.setTooltip("Code in here repeats forever."); this.setHelpUrl(""); } };
 
     // --- Standard Arduino IO Block Definitions (Using Fields) ---
-    Blockly.Blocks['io_digitalwrite'] = { init: function() { this.appendDummyInput().appendField("Digital Write Pin#").appendField(new Blockly.FieldDropdown(getDigitalPinOptions), "PIN"); this.appendDummyInput().appendField("State").appendField(new Blockly.FieldDropdown([["HIGH","HIGH"], ["LOW","LOW"]]), "STATE"); this.setInputsInline(true); this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(ARDUINO_IO_HUE); this.setTooltip("Write HIGH or LOW to a digital pin."); this.setHelpUrl(""); } };
+    // Remove or comment out the conflicting block definition
+    // Blockly.Blocks['io_digitalwrite'] = { init: function() { ... } };
     Blockly.Blocks['io_digitalread'] = { init: function() { this.appendDummyInput().appendField("Digital Read Pin#").appendField(new Blockly.FieldDropdown(getDigitalPinOptions), "PIN"); this.setInputsInline(true); this.setOutput(true, "Boolean"); this.setColour(ARDUINO_IO_HUE); this.setTooltip("Read HIGH or LOW from a digital pin."); this.setHelpUrl(""); } };
     Blockly.Blocks['io_pwm_write'] = { init: function() { this.appendDummyInput().appendField("Set PWM Pin#").appendField(new Blockly.FieldDropdown(getPWMPinOptions), "PIN"); this.appendValueInput("VALUE").setCheck("Number").appendField("Value (0-255)"); this.setInputsInline(true); this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(ARDUINO_IO_HUE); this.setTooltip("Write an analog value (PWM) to a specific PWM pin."); this.setHelpUrl(""); } };
     Blockly.Blocks['io_analogread'] = { init: function() { this.appendDummyInput().appendField("Analog Read Pin#").appendField(new Blockly.FieldDropdown(getAnalogPinOptions), "PIN"); this.setInputsInline(true); this.setOutput(true, "Number"); this.setColour(ARDUINO_IO_HUE); this.setTooltip("Read an analog value (0-1023) from an analog pin."); this.setHelpUrl(""); } };
     Blockly.Blocks['io_highlow'] = { init: function() { this.appendDummyInput().appendField(new Blockly.FieldDropdown([["HIGH","HIGH"], ["LOW","LOW"]]), "STATE"); this.setOutput(true, "Boolean"); this.setColour(ARDUINO_IO_HUE); this.setTooltip("Represents HIGH (1) or LOW (0) state."); this.setHelpUrl(""); } };
-    Blockly.Blocks['io_pinmode'] = { init: function() { this.appendDummyInput().appendField("Set Pin# Mode").appendField(new Blockly.FieldDropdown(getDigitalPinOptions), "PIN"); this.appendDummyInput().appendField(new Blockly.FieldDropdown([["INPUT","INPUT"], ["OUTPUT","OUTPUT"], ["INPUT_PULLUP","INPUT_PULLUP"]]), "MODE"); this.setInputsInline(true); this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(ARDUINO_IO_HUE); this.setTooltip("Set a pin to INPUT, OUTPUT, or INPUT_PULLUP."); this.setHelpUrl(""); } };
 
     // --- Standard Arduino Time Block Definitions ---
     Blockly.Blocks['time_delay'] = { init: function() { this.appendValueInput("DELAY_TIME_MILI").setCheck("Number").appendField("Delay (ms)"); this.setPreviousStatement(true, null); this.setNextStatement(true, null); this.setColour(ARDUINO_TIME_HUE); this.setTooltip("Wait for a specified time in milliseconds."); this.setHelpUrl(""); } };
@@ -485,7 +570,261 @@ function defineAllBlocks() { // Renamed from defineBaseBlocks
 
 } // end defineAllBlocks
 
+/**
+ * Creates and connects default blocks with shadow blocks
+ */
+function createDefaultBlocks() {
+    if (!workspace) return;
+
+    // Clear existing blocks
+    workspace.clear();
+
+    // Create setup block
+    const setupBlock = workspace.newBlock('arduino_setup');
+    setupBlock.initSvg();
+    setupBlock.render();
+    setupBlock.moveBy(50, 50);
+
+    // Create loop block
+    const loopBlock = workspace.newBlock('arduino_loop');
+    loopBlock.initSvg();
+    loopBlock.render();
+    loopBlock.moveBy(50, setupBlock.getHeightWidth().height + 100);
+
+    // Add a default serial begin block to setup
+    const serialBegin = workspace.newBlock('serial_setup');
+    serialBegin.initSvg();
+    serialBegin.render();
+    
+    // Connect serial begin to setup block
+    const setupConnection = setupBlock.getInput('SETUP').connection;
+    if (setupConnection) {
+        setupConnection.connect(serialBegin.previousConnection);
+    }
+
+    // Add a default delay block to loop with shadow number
+    const delayBlock = workspace.newBlock('time_delay');
+    const numberShadow = workspace.newBlock('math_number');
+    numberShadow.setFieldValue(1000, 'NUM');
+    numberShadow.initSvg();
+    
+    delayBlock.initSvg();
+    delayBlock.render();
+
+    // Connect number shadow to delay block
+    const delayInput = delayBlock.getInput('DELAY_TIME_MILI');
+    if (delayInput && delayInput.connection) {
+        delayInput.connection.connect(numberShadow.outputConnection);
+    }
+
+    // Connect delay to loop block
+    const loopConnection = loopBlock.getInput('LOOP').connection;
+    if (loopConnection) {
+        loopConnection.connect(delayBlock.previousConnection);
+    }
+
+    workspace.render();
+}
+
+/**
+ * Resets the workspace to default state
+ */
+function resetWorkspace() {
+    if (!workspace) return;
+    
+    try {
+        // Clear all blocks
+        workspace.clear();
+        
+        // Create setup block
+        const setupBlock = workspace.newBlock('arduino_setup');
+        setupBlock.initSvg();
+        setupBlock.render();
+        setupBlock.moveBy(50, 50);
+
+        // Create loop block
+        const loopBlock = workspace.newBlock('arduino_loop');
+        loopBlock.initSvg();
+        loopBlock.render();
+        loopBlock.moveBy(50, setupBlock.getHeightWidth().height + 100);
+
+        // Add a default serial begin block to setup
+        const serialBegin = workspace.newBlock('serial_setup');
+        serialBegin.initSvg();
+        serialBegin.render();
+        
+        // Connect serial begin to setup block
+        const setupConnection = setupBlock.getInput('SETUP').connection;
+        if (setupConnection) {
+            setupConnection.connect(serialBegin.previousConnection);
+        }
+
+        // Add a default delay block to loop with shadow number
+        const delayBlock = workspace.newBlock('time_delay');
+        const numberShadow = workspace.newBlock('math_number');
+        numberShadow.setFieldValue(1000, 'NUM');
+        numberShadow.initSvg();
+        
+        delayBlock.initSvg();
+        delayBlock.render();
+
+        // Connect number shadow to delay block
+        const delayInput = delayBlock.getInput('DELAY_TIME_MILI');
+        if (delayInput && delayInput.connection) {
+            delayInput.connection.connect(numberShadow.outputConnection);
+        }
+
+        // Connect delay to loop block
+        const loopConnection = loopBlock.getInput('LOOP').connection;
+        if (loopConnection) {
+            loopConnection.connect(delayBlock.previousConnection);
+        }
+        
+        // Save the reset workspace
+        saveWorkspace();
+        showStatus("Workspace reset successfully", "success");
+
+        // Center on content
+        workspace.scrollCenter();
+
+    } catch (e) {
+        console.error("Failed to reset workspace:", e);
+        showStatus("Failed to reset workspace: " + e.message, "error");
+    }
+}
+
+/**
+ * Saves the workspace to localStorage
+ */
+function saveWorkspace(event) {
+    // Don't save after every UI event
+    if (event && (event.isUiEvent || event.type == Blockly.Events.VIEWPORT_CHANGE || event.type == Blockly.Events.SELECTED)) {
+        return;
+    }
+    
+    try {
+        // Save workspace with version tracking
+        const workspaceState = Blockly.serialization.workspaces.save(workspace);
+        workspaceState.version = WORKSPACE_VERSION;
+        localStorage.setItem('arduinoWorkspace', JSON.stringify(workspaceState));
+        console.log("Workspace saved");
+        showStatus("Workspace saved successfully", "success");
+    } catch (e) {
+        console.error("Failed to save workspace:", e);
+        showStatus("Failed to save workspace: " + e.message, "error");
+    }
+}
+
+/**
+ * Cleans up the workspace by organizing blocks
+ */
+function cleanupWorkspace() {
+    if (!workspace) return;
+    
+    try {
+        // Start a compound change to group the cleanup operation
+        if (Blockly.Events) {
+            Blockly.Events.setGroup(true);
+        }
+        
+        // Organize the blocks
+        workspace.cleanUp();
+        
+        // End the compound change
+        if (Blockly.Events) {
+            Blockly.Events.setGroup(false);
+        }
+        
+        // Save the cleaned workspace
+        saveWorkspace();
+        showStatus("Workspace cleaned up successfully", "success");
+    } catch (e) {
+        console.error("Failed to cleanup workspace:", e);
+        showStatus("Failed to cleanup workspace: " + e.message, "error");
+    }
+}
+
+// Add cleanup function to window for toolbar access
+window.cleanupWorkspace = cleanupWorkspace;
 
 // --- Initialize the Application ---
 // Wait for the DOM to be fully loaded before calling initialize
 document.addEventListener('DOMContentLoaded', initialize);
+
+// Add styles for header
+const styles = `
+h1 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    margin: 0;
+}
+
+.social-links {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.social-icon {
+    color: white;
+    text-decoration: none;
+    transition: transform 0.3s ease;
+}
+
+.social-icon:hover {
+    transform: scale(1.1);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.social-icon i {
+    font-size: 20px;
+}
+`;
+
+// Add the styles and modify the title when the document loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Add Font Awesome for social icons
+    const fontAwesome = document.createElement('link');
+    fontAwesome.rel = 'stylesheet';
+    fontAwesome.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css';
+    document.head.appendChild(fontAwesome);
+
+    // Add our custom styles
+    const styleSheet = document.createElement('style');
+    styleSheet.textContent = styles;
+    document.head.appendChild(styleSheet);
+
+    // Find the h1 element
+    const title = document.querySelector('h1');
+    if (title) {
+        // Create social links
+        const socialLinks = document.createElement('div');
+        socialLinks.className = 'social-links';
+        socialLinks.innerHTML = `
+            <a href="https://www.exoidrobotics.com" class="social-icon" target="_blank" title="Website">
+                <i class="fas fa-globe"></i>
+            </a>
+            <a href="https://www.facebook.com/exoidrobotics" class="social-icon" target="_blank" title="Facebook">
+                <i class="fab fa-facebook"></i>
+            </a>
+            <a href="https://www.instagram.com/exoidrobotics/" class="social-icon" target="_blank" title="Instagram">
+                <i class="fab fa-instagram"></i>
+            </a>
+            <a href="https://github.com/ExoidRoboticsPH" class="social-icon" target="_blank" title="GitHub">
+                <i class="fab fa-github"></i>
+            </a>
+        `;
+
+        // Wrap the existing text in a span
+        const titleText = title.textContent;
+        title.textContent = '';
+        const textSpan = document.createElement('span');
+        textSpan.textContent = titleText;
+        title.appendChild(textSpan);
+        
+        // Add social links to the title
+        title.appendChild(socialLinks);
+    }
+});
