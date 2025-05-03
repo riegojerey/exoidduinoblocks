@@ -2,7 +2,7 @@
 # This script handles the complete installation and build process
 
 # Get absolute path where the script is running
-$baseDir = Get-Location
+$baseDir = (Get-Location).Path
 Write-Host "🚀 Starting ExoiDuino Setup in: $baseDir" -ForegroundColor Cyan
 
 # Function to check if a command exists
@@ -16,6 +16,17 @@ function Handle-Error {
     Write-Host "❌ Error: $ErrorMessage" -ForegroundColor Red
     Write-Host "Please fix the error and run the script again."
     exit 1
+}
+
+# Function to safely create path
+function Create-SafePath {
+    param($Path)
+    $fullPath = [System.IO.Path]::GetFullPath($Path)
+    if (-not (Test-Path $fullPath)) {
+        New-Item -ItemType Directory -Force -Path $fullPath | Out-Null
+        Write-Host "Created directory: $fullPath"
+    }
+    return $fullPath
 }
 
 # Check prerequisites
@@ -35,30 +46,27 @@ if (-not (Test-Command "npm")) {
 
 Write-Host "✅ Found Node.js $nodeVersion and npm $(npm -v)" -ForegroundColor Green
 
-# Create all necessary directories
+# Create all necessary directories with safe path handling
+$arduinoDataDir = Create-SafePath (Join-Path $baseDir "arduino-data")
+$offlineResourcesDir = Create-SafePath (Join-Path $baseDir "offline-resources")
+
 $directories = @(
-    "arduino-data",
-    "arduino-data/downloads",
-    "arduino-data/packages",
-    "arduino-data/libraries",
-    "arduino-data/user",
-    "offline-resources",
-    "offline-resources/packages",
-    "offline-resources/libraries",
-    "libs/blockly",
-    "libs/blockly/msg",
-    "libs/fontawesome/css",
-    "libs/fontawesome/webfonts",
-    "libs/prism/themes",
-    "libs/prism/components"
+    (Join-Path $arduinoDataDir "downloads"),
+    (Join-Path $arduinoDataDir "packages"),
+    (Join-Path $arduinoDataDir "libraries"),
+    (Join-Path $arduinoDataDir "user"),
+    (Join-Path $offlineResourcesDir "packages"),
+    (Join-Path $offlineResourcesDir "libraries"),
+    (Join-Path $baseDir "libs/blockly"),
+    (Join-Path $baseDir "libs/blockly/msg"),
+    (Join-Path $baseDir "libs/fontawesome/css"),
+    (Join-Path $baseDir "libs/fontawesome/webfonts"),
+    (Join-Path $baseDir "libs/prism/themes"),
+    (Join-Path $baseDir "libs/prism/components")
 )
 
 foreach ($dir in $directories) {
-    $fullPath = Join-Path $baseDir $dir
-    if (-not (Test-Path $fullPath)) {
-        New-Item -ItemType Directory -Force -Path $fullPath | Out-Null
-        Write-Host "Created directory: $dir"
-    }
+    Create-SafePath $dir
 }
 
 # Clean previous installation
@@ -93,58 +101,59 @@ npm install --save-dev adm-zip@0.5.10 electron@28.3.3 electron-builder@24.13.3 @
 # Download and setup Arduino CLI
 Write-Host "📥 Setting up Arduino CLI..." -ForegroundColor Yellow
 
-$arduinoDataDir = Join-Path $baseDir "arduino-data"
-$arduinoCliPath = Join-Path $arduinoDataDir "arduino-cli.exe"
-
-# Download Arduino CLI if not exists
-if (-not (Test-Path $arduinoCliPath)) {
-    $arduinoCliUrl = "https://downloads.arduino.cc/arduino-cli/arduino-cli_latest_Windows_64bit.zip"
-    $tempZip = Join-Path $arduinoDataDir "temp.zip"
-    
-    Invoke-WebRequest -Uri $arduinoCliUrl -OutFile $tempZip
-    Expand-Archive -Path $tempZip -DestinationPath $arduinoDataDir -Force
-    Remove-Item $tempZip -Force
-}
-
-# Create Arduino CLI config
+# Create Arduino CLI config with proper path escaping
 $configPath = Join-Path $arduinoDataDir "arduino-cli.yaml"
+$escapedDataDir = $arduinoDataDir.Replace('\', '/').Replace('"', '\"')
+$escapedDownloadsDir = (Join-Path $arduinoDataDir 'downloads').Replace('\', '/').Replace('"', '\"')
+$escapedUserDir = (Join-Path $arduinoDataDir 'user').Replace('\', '/').Replace('"', '\"')
+
 @"
 board_manager:
   additional_urls: []
 daemon:
   port: "50051"
 directories:
-  data: "$($arduinoDataDir.Replace('\','/'))"
-  downloads: "$((Join-Path $arduinoDataDir 'downloads').Replace('\','/'))"
-  user: "$((Join-Path $arduinoDataDir 'user').Replace('\','/'))"
+  data: "$escapedDataDir"
+  downloads: "$escapedDownloadsDir"
+  user: "$escapedUserDir"
 logging:
   file: ""
   format: "text"
   level: "info"
 "@ | Set-Content $configPath
 
-# Initialize Arduino CLI
+# Initialize Arduino CLI with proper error handling
 Write-Host "Initializing Arduino CLI..."
-& $arduinoCliPath config init --overwrite --config-file $configPath
-& $arduinoCliPath core update-index --config-file $configPath
+$arduinoCliPath = Join-Path $arduinoDataDir "arduino-cli.exe"
 
-# Install board packages
-$boards = @("arduino:avr", "arduino:megaavr")
-foreach ($board in $boards) {
-    Write-Host "Installing board package: $board"
-    & $arduinoCliPath core install $board --config-file $configPath
-}
+try {
+    & $arduinoCliPath config init --overwrite --config-file $configPath
+    if ($LASTEXITCODE -ne 0) { throw "Arduino CLI config initialization failed" }
+    
+    & $arduinoCliPath core update-index --config-file $configPath
+    if ($LASTEXITCODE -ne 0) { throw "Arduino CLI core update failed" }
 
-# Install libraries
-$libraries = @("Servo", "Stepper", "Firmata")
-foreach ($lib in $libraries) {
-    Write-Host "Installing library: $lib"
-    & $arduinoCliPath lib install $lib --config-file $configPath
+    # Install board packages with proper error handling
+    $boards = @("arduino:avr", "arduino:megaavr")
+    foreach ($board in $boards) {
+        Write-Host "Installing board package: $board"
+        & $arduinoCliPath core install $board --config-file $configPath
+        if ($LASTEXITCODE -ne 0) { throw "Failed to install board package: $board" }
+    }
+
+    # Install only non-built-in libraries
+    $libraries = @("Servo", "Stepper", "Firmata")
+    foreach ($lib in $libraries) {
+        Write-Host "Installing library: $lib"
+        & $arduinoCliPath lib install $lib --config-file $configPath
+        if ($LASTEXITCODE -ne 0) { Write-Host "Warning: Failed to install library: $lib" -ForegroundColor Yellow }
+    }
+} catch {
+    Handle-Error "Arduino CLI setup failed: $_"
 }
 
 # Copy resources to offline directory
 Write-Host "📦 Preparing offline resources..." -ForegroundColor Yellow
-$offlineResourcesDir = Join-Path $baseDir "offline-resources"
 
 # Copy Arduino CLI and config
 Copy-Item -Path $arduinoCliPath -Destination $offlineResourcesDir -Force
