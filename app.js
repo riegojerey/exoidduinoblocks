@@ -64,7 +64,23 @@ const ARDUINO_SERIAL_HUE = 170; // Teal/Blue
 const SENSORS_HUE = 40; // New color for Sensors (Orange/Yellow)
 const MOTORS_HUE = "#FF6680"; // Custom Color for Motors
 
-const { listPorts, detectBoard, uploadCode } = require('./ipc_handler');
+// IPC Handler setup
+let ipcHandler = {
+    listPorts: async () => [],
+    detectBoard: async () => null,
+    uploadCode: async () => { throw new Error('Upload not available in web mode') },
+    isElectron: false
+};
+
+try {
+    if (window.require) {
+        ipcHandler = require('./ipc_handler');
+    } else {
+        console.log('Running in web mode - IPC features disabled');
+    }
+} catch (e) {
+    console.log('Running in web mode - IPC features disabled');
+}
 
 // --- Main Initialization Function ---
 function initialize() {
@@ -342,7 +358,7 @@ async function populatePortSelector() {
 
     try {
         showStatus("Scanning for ports...", "info");
-        const ports = await listPorts();
+        const ports = await ipcHandler.listPorts();
         
         // Clear existing options
         portSelector.innerHTML = '<option value="">-- Select Port --</option>';
@@ -387,14 +403,14 @@ async function handleUpload() {
         showStatus("Uploading code...", "info");
         
         // First detect the board
-        const boardInfo = await detectBoard(selectedPort);
+        const boardInfo = await ipcHandler.detectBoard(selectedPort);
         if (!boardInfo) {
             showStatus("Could not detect board. Is it connected properly?", "error");
             return;
         }
 
         // Upload the code
-        const result = await uploadCode(code, selectedPort, boardInfo.boards[0].fqbn);
+        const result = await ipcHandler.uploadCode(code, selectedPort, boardInfo.boards[0].fqbn);
         
         if (result.success) {
             showStatus(result.message, "success");

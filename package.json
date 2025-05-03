@@ -7,13 +7,16 @@
     "start": "electron .",
     "build": "electron-builder",
     "build:win": "electron-builder --win --x64",
-    "postinstall": "node electron/scripts/setup-arduino-cli.js",
+    "postinstall": "electron-rebuild && node electron/scripts/setup-arduino-cli.js",
     "setup-arduino": "node electron/scripts/install-arduino-deps.js",
     "pack-resources": "node electron/scripts/pack-resources.js",
     "clean": "rimraf node_modules arduino-data dist"
   },
   "author": "Exoid Robotics",
   "license": "MIT",
+  "engines": {
+    "node": ">=16.0.0"
+  },
   "dependencies": {
     "node-fetch": "^2.6.7",
     "serialport": "^13.0.0"
@@ -22,6 +25,7 @@
     "adm-zip": "^0.5.10",
     "electron": "^28.3.3",
     "electron-builder": "^24.13.3",
+    "electron-rebuild": "^5.0.0",
     "rimraf": "^5.0.10"
   },
   "build": {
