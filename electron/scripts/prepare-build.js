@@ -52,38 +52,42 @@ async function prepareBuildFiles() {
         fs.unlinkSync(zipPath);
     }
 
-    // Create custom Arduino CLI config
-    const configContent = {
-        directories: {
-            data: ARDUINO_DATA_DIR,
-            downloads: path.join(ARDUINO_DATA_DIR, 'downloads'),
-            user: path.join(ARDUINO_DATA_DIR, 'user')
-        },
-        library: {
-            enable_unsafe_install: false
-        },
-        logging: {
-            file: "",
-            format: "text",
-            level: "info"
-        },
-        board_manager: {
-            additional_urls: []
-        },
-        daemon: {
-            port: "50051"
-        },
-        installation: {
-            built_in_libraries_dir: path.join(ARDUINO_DATA_DIR, 'libraries'),
-            packages_dir: path.join(ARDUINO_DATA_DIR, 'packages')
+    // Create directories
+    const dirs = [
+        path.join(ARDUINO_DATA_DIR, 'packages'),
+        path.join(ARDUINO_DATA_DIR, 'libraries'),
+        path.join(ARDUINO_DATA_DIR, 'downloads'),
+        path.join(ARDUINO_DATA_DIR, 'user')
+    ];
+
+    dirs.forEach(dir => {
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
         }
-    };
+    });
 
-    fs.writeFileSync(ARDUINO_CONFIG_PATH, JSON.stringify(configContent, null, 2));
+    // Create Arduino CLI config
+    const configContent = `
+board_manager:
+  additional_urls: []
+daemon:
+  port: "50051"
+directories:
+  data: "${ARDUINO_DATA_DIR.replace(/\\/g, '/')}"
+  downloads: "${path.join(ARDUINO_DATA_DIR, 'downloads').replace(/\\/g, '/')}"
+  user: "${path.join(ARDUINO_DATA_DIR, 'user').replace(/\\/g, '/')}"
+logging:
+  file: ""
+  format: "text"
+  level: "info"
+`;
 
-    // Initialize Arduino CLI with custom config
+    // Write config file
+    fs.writeFileSync(ARDUINO_CONFIG_PATH, configContent);
+
+    // Initialize Arduino CLI
     console.log('Initializing Arduino CLI...');
-    execSync(`"${ARDUINO_CLI_PATH}" config init --config-file "${ARDUINO_CONFIG_PATH}"`, { stdio: 'inherit' });
+    execSync(`"${ARDUINO_CLI_PATH}" config init --overwrite --config-file "${ARDUINO_CONFIG_PATH}"`, { stdio: 'inherit' });
     execSync(`"${ARDUINO_CLI_PATH}" core update-index --config-file "${ARDUINO_CONFIG_PATH}"`, { stdio: 'inherit' });
 
     // Install required board packages
@@ -99,19 +103,6 @@ async function prepareBuildFiles() {
         console.log(`Installing ${lib}...`);
         execSync(`"${ARDUINO_CLI_PATH}" lib install "${lib}" --config-file "${ARDUINO_CONFIG_PATH}"`, { stdio: 'inherit' });
     }
-
-    // Create directories for user sketches and data
-    const userDirs = [
-        path.join(ARDUINO_DATA_DIR, 'user'),
-        path.join(ARDUINO_DATA_DIR, 'downloads'),
-        path.join(ARDUINO_DATA_DIR, 'temp')
-    ];
-
-    userDirs.forEach(dir => {
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-        }
-    });
 
     console.log('Build files prepared successfully!');
 }
