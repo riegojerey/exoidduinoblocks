@@ -3,10 +3,34 @@ const path = require('path');
 const { SerialPort } = require('serialport');
 const fs = require('fs');
 const { execSync } = require('child_process');
+const os = require('os');
 
 const isDev = process.env.NODE_ENV === 'development';
 const ARDUINO_DATA_DIR = path.join(app.getPath('userData'), 'arduino-data');
 const ARDUINO_CLI_PATH = path.join(ARDUINO_DATA_DIR, process.platform === 'win32' ? 'arduino-cli.exe' : 'arduino-cli');
+const TEMP_SKETCH_DIR = path.join(os.tmpdir(), 'ExoiDuinoSketch');
+
+// Ensure Arduino CLI exists
+function checkArduinoCLI() {
+    if (!fs.existsSync(ARDUINO_CLI_PATH)) {
+        throw new Error('Arduino CLI not found. Please run setup-arduino script first.');
+    }
+}
+
+// Clean up temporary files
+function cleanupTempFiles() {
+    if (fs.existsSync(TEMP_SKETCH_DIR)) {
+        fs.rmSync(TEMP_SKETCH_DIR, { recursive: true, force: true });
+    }
+}
+
+// Validate board FQBN
+function validateBoardFQBN(fqbn) {
+    const fqbnPattern = /^[a-zA-Z0-9_-]+:[a-zA-Z0-9_-]+:[a-zA-Z0-9_-]+$/;
+    if (!fqbnPattern.test(fqbn)) {
+        throw new Error('Invalid board FQBN format');
+    }
+}
 
 function createWindow() {
     const mainWindow = new BrowserWindow({
@@ -64,77 +88,98 @@ ipcMain.handle('list-ports', async () => {
         return ports;
     } catch (error) {
         console.error('Error listing ports:', error);
-        throw error;
+        throw new Error(`Failed to list ports: ${error.message}`);
     }
 });
 
 // Handle Arduino board detection
 ipcMain.handle('detect-board', async (event, portPath) => {
     try {
+        checkArduinoCLI();
+        if (!portPath) {
+            throw new Error('Port path is required');
+        }
         const result = execSync(`"${ARDUINO_CLI_PATH}" board list --format json`).toString();
         const boards = JSON.parse(result);
         const board = boards.find(b => b.port.address === portPath);
         return board || null;
     } catch (error) {
         console.error('Error detecting board:', error);
-        throw error;
+        throw new Error(`Failed to detect board: ${error.message}`);
     }
 });
 
 // Handle code compilation and upload
 ipcMain.handle('upload-code', async (event, { code, port, board }) => {
     try {
+        checkArduinoCLI();
+        validateBoardFQBN(board);
+
+        // Clean up any existing temp files
+        cleanupTempFiles();
+
         // Create temporary sketch directory
-        const sketchDir = path.join(app.getPath('temp'), 'ExoiDuinoSketch');
-        if (!fs.existsSync(sketchDir)) {
-            fs.mkdirSync(sketchDir, { recursive: true });
-        }
+        fs.mkdirSync(TEMP_SKETCH_DIR, { recursive: true });
 
         // Write the code to a .ino file
-        const sketchPath = path.join(sketchDir, 'ExoiDuinoSketch.ino');
+        const sketchPath = path.join(TEMP_SKETCH_DIR, 'ExoiDuinoSketch.ino');
         fs.writeFileSync(sketchPath, code);
 
-        // Compile the code
-        console.log('Compiling sketch...');
-        execSync(`"${ARDUINO_CLI_PATH}" compile --fqbn ${board} "${sketchPath}"`, {
-            stdio: 'inherit'
-        });
+        try {
+            // Compile the code
+            console.log('Compiling sketch...');
+            execSync(`"${ARDUINO_CLI_PATH}" compile --fqbn ${board} "${sketchPath}"`, {
+                stdio: 'inherit'
+            });
 
-        // Upload the compiled code
-        console.log('Uploading to board...');
-        execSync(`"${ARDUINO_CLI_PATH}" upload -p ${port} --fqbn ${board} "${sketchPath}"`, {
-            stdio: 'inherit'
-        });
+            // Upload the compiled code
+            console.log('Uploading to board...');
+            execSync(`"${ARDUINO_CLI_PATH}" upload -p ${port} --fqbn ${board} "${sketchPath}"`, {
+                stdio: 'inherit'
+            });
 
-        return { success: true, message: 'Upload completed successfully!' };
+            return { success: true, message: 'Upload completed successfully!' };
+        } finally {
+            // Clean up temp files
+            cleanupTempFiles();
+        }
     } catch (error) {
         console.error('Error during upload:', error);
-        throw error;
+        cleanupTempFiles();
+        throw new Error(`Failed to upload code: ${error.message}`);
     }
 });
 
 // Handle library installation
 ipcMain.handle('install-library', async (event, libraryName) => {
     try {
+        checkArduinoCLI();
+        if (!libraryName) {
+            throw new Error('Library name is required');
+        }
         execSync(`"${ARDUINO_CLI_PATH}" lib install "${libraryName}"`, {
             stdio: 'inherit'
         });
         return { success: true, message: `Library ${libraryName} installed successfully!` };
     } catch (error) {
         console.error('Error installing library:', error);
-        throw error;
+        throw new Error(`Failed to install library: ${error.message}`);
     }
 });
 
 // Handle board package installation
 ipcMain.handle('install-board', async (event, boardPackage) => {
     try {
+        checkArduinoCLI();
+        if (!boardPackage) {
+            throw new Error('Board package is required');
+        }
         execSync(`"${ARDUINO_CLI_PATH}" core install "${boardPackage}"`, {
             stdio: 'inherit'
         });
         return { success: true, message: `Board package ${boardPackage} installed successfully!` };
     } catch (error) {
         console.error('Error installing board package:', error);
-        throw error;
+        throw new Error(`Failed to install board package: ${error.message}`);
     }
 }); 
