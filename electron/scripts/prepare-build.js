@@ -17,8 +17,6 @@ const REQUIRED_BOARDS = [
 const REQUIRED_LIBRARIES = [
     'Servo',
     'Stepper',
-    'Wire',
-    'SPI',
     'EEPROM',
     'Firmata'
 ];
