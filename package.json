@@ -1,0 +1,83 @@
+{
+  "name": "exoiduino",
+  "version": "1.0.0",
+  "description": "ExoiDuino - Arduino Block Programming Environment by Exoid Robotics",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win --x64",
+    "postinstall": "node electron/scripts/setup-arduino-cli.js",
+    "setup-arduino": "node electron/scripts/install-arduino-deps.js",
+    "pack-resources": "node electron/scripts/pack-resources.js",
+    "clean": "rimraf node_modules arduino-data dist"
+  },
+  "author": "Exoid Robotics",
+  "license": "MIT",
+  "dependencies": {
+    "node-fetch": "^2.6.7",
+    "serialport": "^13.0.0"
+  },
+  "devDependencies": {
+    "adm-zip": "^0.5.10",
+    "electron": "^28.3.3",
+    "electron-builder": "^24.13.3",
+    "rimraf": "^5.0.10"
+  },
+  "build": {
+    "appId": "com.exoidrobotics.exoiduino",
+    "productName": "ExoiDuino",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**/*",
+      "index.html",
+      "style.css",
+      "app.js",
+      "app_*.js",
+      "libs/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "arduino-data",
+        "to": "arduino-data",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "libs",
+        "to": "libs",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "zip",
+          "arch": ["x64"]
+        },
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "electron/icons/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "asar": true,
+    "asarUnpack": [
+      "arduino-data/**/*"
+    ]
+  }
+}

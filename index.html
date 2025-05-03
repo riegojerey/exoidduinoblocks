@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExoiDuino by Exoid Robotics</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="libs/fontawesome/css/all.min.css">
+    <link rel="stylesheet" href="libs/prism/themes/prism-okaidia.min.css">
+</head>
+<body>
+    <header>
+        <h1><i class="fas fa-robot"></i> ExoiDuino by Exoid Robotics</h1>
+    </header>
+
+    <div class="container">
+        <div id="blocklyArea">
+            <div id="blocklyDiv" style="height: 100%; width: 100%;"></div>
+        </div>
+
+        <div id="codeArea">
+            <h2><i class="fas fa-code"></i> Arduino Code</h2>
+            <div class="controls">
+                 <div class="control-item">
+                    <label for="boardSelector"><i class="fas fa-microchip"></i> Board:</label>
+                    <select id="boardSelector">
+                        <option value="uno" selected>Arduino Uno</option>
+                        <option value="nano">Arduino Nano</option>
+                        <option value="mega">Arduino Mega</option>
+                        </select>
+                 </div>
+                 <div class="control-item">
+                    <label for="portSelector"><i class="fas fa-plug"></i> Port:</label>
+                    <select id="portSelector" disabled>
+                        <option value="">-- Select Port --</option>
+                    </select>
+                    <button id="refreshPortsButton" title="Refresh Serial Ports">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                 </div>
+                 <div class="control-item">
+                    <button id="uploadButton" title="Generate Code & Connect via Web Serial">
+                        <i class="fas fa-upload"></i> Upload
+                    </button>
+                    <button id="serialButton" title="Open Serial Monitor (Coming Soon!)">
+                        <i class="fas fa-terminal"></i> Serial
+                    </button>
+                    <button id="cleanupButton" title="Organize Blocks">
+                        <i class="fas fa-broom"></i> Cleanup
+                    </button>
+                    <button id="resetButton" title="Reset to Default Blocks">
+                        <i class="fas fa-undo"></i> Reset
+                    </button>
+                    <button id="exportButton" title="Export as .ino file">
+                        <i class="fas fa-file-export"></i> Export
+                    </button>
+                </div>
+            </div>
+            <pre><code id="codeDiv" class="language-cpp">/* Add blocks to generate Arduino code! */</code></pre>
+            <div id="statusMessages" class="status-messages"></div>
+        </div>
+    </div>
+
+    <xml id="toolbox" style="display: none">
+        <category name="Structure" colour="180">
+            <block type="arduino_setup">
+                <field name="SERIAL_RATE">9600</field>
+            </block>
+            <sep gap="8"></sep>
+            <label text="Pin Setup" web-class="toolbox-label"></label>
+            <block type="io_pinmode_num">
+                <value name="PIN">
+                    <block type="math_number">
+                        <field name="NUM">13</field>
+                    </block>
+                </value>
+                <field name="MODE">OUTPUT</field>
+            </block>
+            <block type="io_pinmode_var">
+                <field name="PIN">pin</field>
+                <field name="MODE">OUTPUT</field>
+            </block>
+            <sep gap="16"></sep>
+            <block type="arduino_loop">
+                <statement name="LOOP">
+                    <block type="time_delay">
+                        <field name="DELAY_TIME_MILI">1000</field>
+                    </block>
+                </statement>
+            </block>
+            <sep gap="8"></sep>
+            <label text="Serial Setup" web-class="toolbox-label"></label>
+            <block type="serial_setup"> <field name="BAUD">9600</field> </block>
+            <sep gap="8"></sep>
+            <label text="Motor Setup" web-class="toolbox-label"></label>
+            <block type="l298n_attach"></block>
+            <block type="servo_attach"></block>
+            <block type="stepper_setup_2pin"> <field name="STEPS">2048</field> </block>
+            <block type="stepper_setup_4pin"> <field name="STEPS">2048</field> </block>
+            <sep gap="8"></sep>
+            <label text="Sensor Setup" web-class="toolbox-label"></label>
+            <block type="encoder_init"></block>
+            <block type="sensor_ultrasonic_init"></block>
+            <sep gap="16"></sep>
+            <label text="Timing" web-class="toolbox-label"></label>
+            <block type="time_delay">
+                <value name="DELAY_TIME_MILI">
+                    <shadow type="math_number">
+                        <field name="NUM">1000</field>
+                    </shadow>
+                </value>
+            </block>
+            <block type="time_delaymicros">
+                <value name="DELAY_TIME_MICRO">
+                    <shadow type="math_number">
+                        <field name="NUM">100</field>
+                    </shadow>
+                </value>
+            </block>
+            <block type="time_millis"></block>
+            <block type="time_micros"></block>
+        </category>
+        <category name="Input/Output" colour="260">
+            <label text="Digital States" web-class="toolbox-label"></label>
+            <block type="io_digital_state"></block>
+            <sep gap="8"></sep>
+            <label text="Pin Modes" web-class="toolbox-label"></label>
+            <block type="io_pin_mode"></block>
+            <sep gap="8"></sep>
+            <label text="Analog Pins" web-class="toolbox-label"></label>
+            <block type="io_analog_pin"></block>
+            <label text="Digital Pins" web-class="toolbox-label"></label>
+            <block type="io_digital_pin"></block>
+            <sep gap="16"></sep>
+            <label text="Digital Operations" web-class="toolbox-label"></label>
+            <block type="io_digitalwrite_num">
+                <value name="PIN">
+                    <block type="math_number">
+                        <field name="NUM">13</field>
+                    </block>
+                </value>
+                <value name="STATE">
+                    <block type="io_digital_state">
+                        <field name="STATE">HIGH</field>
+                    </block>
+                </value>
+            </block>
+            <block type="io_digitalwrite_var">
+                <field name="PIN">pin</field>
+                <value name="STATE">
+                    <block type="io_digital_state">
+                        <field name="STATE">HIGH</field>
+                    </block>
+                </value>
+            </block>
+            <sep gap="8"></sep>
+            <block type="io_digitalread_num">
+                <value name="PIN">
+                    <block type="math_number">
+                        <field name="NUM">2</field>
+                    </block>
+                </value>
+            </block>
+            <block type="io_digitalread_var">
+                <field name="PIN">pin</field>
+            </block>
+            <sep gap="8"></sep>
+            <label text="Analog Input/Output" web-class="toolbox-label"></label>
+            <block type="io_pwm_write">
+                <value name="PIN">
+                    <block type="math_number">
+                        <field name="NUM">3</field>
+                    </block>
+                </value>
+                <value name="VALUE">
+                    <block type="math_number">
+                        <field name="NUM">128</field>
+                    </block>
+                </value>
+            </block>
+            <block type="io_pwm_write_var">
+                <field name="PIN">pin</field>
+                <value name="VALUE">
+                    <block type="math_number">
+                        <field name="NUM">128</field>
+                    </block>
+                </value>
+            </block>
+            <sep gap="8"></sep>
+            <block type="io_analogread_num">
+                <value name="PIN">
+                    <block type="io_analog_pin">
+                        <field name="PIN">A0</field>
+                    </block>
+                </value>
+            </block>
+            <block type="io_analogread_var">
+                <field name="PIN">pin</field>
+            </block>
+        </category>
+        <category name="Sensors" colour="40">
+            <block type="sensor_light_condition"> <field name="STATE">DARK</field> </block>
+            <block type="sensor_light_value"> </block>
+            <block type="sensor_potentiometer"> <field name="UNIT">VALUE</field> </block>
+            <label text="Ultrasonic Sensor" web-class="toolbox-label"></label>
+             <block type="sensor_ultrasonic_read"> <field name="UNIT">CM</field> </block>
+             <label text="Encoder" web-class="toolbox-label"></label>
+            <block type="encoder_read"></block>
+            <block type="encoder_write"> <value name="VALUE"> <shadow type="math_number"><field name="NUM">0</field></shadow> </value> </block>
+        </category>
+        <category name="Motors" colour="#FF6680">
+             <label text="DC Motors (L298N)" web-class="toolbox-label"></label>
+             <block type="l298n_set_direction"> <field name="MOTOR_CHOICE">A</field> <field name="DIRECTION">FORWARD</field> </block>
+             <block type="l298n_set_speed"> <field name="MOTOR_CHOICE">A</field> <field name="SPEED">255</field> </block>
+             <sep gap="20"></sep>
+             <label text="Servo Motors" web-class="toolbox-label"></label>
+             <block type="servo_detach"></block>
+             <block type="servo_write"> <value name="DEGREE"> <shadow type="math_number"><field name="NUM">90</field></shadow> </value> </block>
+             <block type="servo_read"></block>
+             <sep gap="20"></sep>
+             <label text="Stepper Motors" web-class="toolbox-label"></label>
+             <block type="stepper_set_speed"> <field name="SPEED">60</field> </block>
+             <block type="stepper_step"> <value name="STEPS"> <shadow type="math_number"><field name="NUM">100</field></shadow> </value> </block>
+        </category>
+        <category name="Logic" colour="210">
+            <block type="controls_if"></block>
+            <block type="logic_if_else"></block>
+            <block type="logic_compare"></block>
+            <block type="logic_operation"></block>
+            <block type="logic_negate"></block>
+            <block type="logic_boolean"></block>
+        </category>
+        <category name="Loops" colour="120"> <block type="controls_repeat_ext"> <value name="TIMES"> <shadow type="math_number"><field name="NUM">10</field></shadow> </value> </block> <block type="controls_whileUntil"></block> <block type="controls_for"> <value name="FROM"><shadow type="math_number"><field name="NUM">1</field></shadow></value> <value name="TO"><shadow type="math_number"><field name="NUM">10</field></shadow></value> <value name="BY"><shadow type="math_number"><field name="NUM">1</field></shadow></value> </block> <block type="controls_flow_statements"></block> </category>
+        <category name="Math" colour="230">
+            <block type="math_number_typed"></block>
+            <block type="math_trig_dropdown">
+                <field name="OP">sin</field>
+                <value name="NUM">
+                    <shadow type="math_number">
+                        <field name="NUM">45.0</field>
+                    </shadow>
+                </value>
+            </block>
+            <block type="math_sqrt_dropdown">
+                <field name="OP">sqrt</field>
+                <value name="NUM">
+                    <shadow type="math_number">
+                        <field name="NUM">9.0</field>
+                    </shadow>
+                </value>
+            </block>
+            <block type="math_round_dropdown">
+                <field name="OP">round</field>
+                <value name="NUM">
+                    <shadow type="math_number">
+                        <field name="NUM">3.7</field>
+                    </shadow>
+                </value>
+            </block>
+            <block type="math_remainder">
+                <value name="DIVIDEND">
+                    <shadow type="math_number">
+                        <field name="NUM">10.0</field>
+                    </shadow>
+                </value>
+                <value name="DIVISOR">
+                    <shadow type="math_number">
+                        <field name="NUM">3.0</field>
+                    </shadow>
+                </value>
+            </block>
+            <block type="math_map">
+                <value name="VALUE">
+                    <shadow type="math_number">
+                        <field name="NUM">5.0</field>
+                    </shadow>
+                </value>
+                <value name="FROM_LOW">
+                    <shadow type="math_number">
+                        <field name="NUM">0.0</field>
+                    </shadow>
+                </value>
+                <value name="FROM_HIGH">
+                    <shadow type="math_number">
+                        <field name="NUM">10.0</field>
+                    </shadow>
+                </value>
+                <value name="TO_LOW">
+                    <shadow type="math_number">
+                        <field name="NUM">0.0</field>
+                    </shadow>
+                </value>
+                <value name="TO_HIGH">
+                    <shadow type="math_number">
+                        <field name="NUM">100.0</field>
+                    </shadow>
+                </value>
+            </block>
+            <block type="math_arithmetic"></block>
+            <block type="math_single"></block>
+            <block type="math_negate"></block>
+            <block type="math_random_int">
+                <value name="FROM"><shadow type="math_number"><field name="NUM">1.0</field></shadow></value>
+                <value name="TO"><shadow type="math_number"><field name="NUM">100.0</field></shadow></value>
+            </block>
+        </category>
+         <category name="Messaging" colour="170"> <label text="Text" web-class="toolbox-label"></label>
+             <block type="text"></block>
+             <sep gap="16"></sep>
+             <label text="Serial" web-class="toolbox-label"></label>
+             <block type="serial_print"><value name="CONTENT"><shadow type="text"><field name="TEXT">Hello Arduino!</field></shadow></value></block>
+             <block type="serial_available"></block>
+             <block type="serial_read"></block>
+         </category>
+         <category name="Variables" colour="330" custom="VARIABLE">
+            <label text="Declare in Setup" web-class="toolbox-label"></label>
+            <block type="variables_set">
+                <field name="TYPE">int</field>
+                <field name="VAR">led</field>
+                <value name="VALUE">
+                    <shadow type="math_number">
+                        <field name="NUM">9</field>
+                    </shadow>
+                </value>
+            </block>
+            <block type="variables_set">
+                <field name="TYPE">int</field>
+                <field name="VAR">brightness</field>
+                <value name="VALUE">
+                    <shadow type="math_number">
+                        <field name="NUM">0</field>
+                    </shadow>
+                </value>
+            </block>
+            <sep gap="8"></sep>
+            <label text="Modify in Loop" web-class="toolbox-label"></label>
+            <block type="variables_set">
+                <field name="TYPE">int</field>
+                <field name="VAR">brightness</field>
+                <value name="VALUE">
+                    <shadow type="math_number">
+                        <field name="NUM">0</field>
+                    </shadow>
+                </value>
+            </block>
+            <block type="variables_set_expression">
+                <field name="VAR">brightness</field>
+                <value name="EXPRESSION">
+                    <shadow type="math_number">
+                        <field name="NUM">0</field>
+                    </shadow>
+                </value>
+            </block>
+            <block type="variables_change">
+                <field name="VAR">brightness</field>
+                <value name="DELTA">
+                    <shadow type="math_number">
+                        <field name="NUM">1</field>
+                    </shadow>
+                </value>
+            </block>
+        </category>
+        <category name="Functions" colour="290" custom="PROCEDURE"></category>
+        <category name="PID Control" colour="230">
+            <block type="pid_create"></block>
+            <block type="pid_compute"></block>
+            <block type="pid_get_output"></block>
+            <block type="pid_set_limits"></block>
+        </category>
+    </xml>
+
+    <script src="libs/blockly/blockly.min.js"></script>
+    <script src="libs/blockly/blocks.min.js"></script>
+    <script src="libs/blockly/javascript.min.js"></script>
+    <script src="libs/blockly/msg/en.min.js"></script>
+
+    <script src="libs/generator/arduino_generator_init.js"></script>
+
+    <script src="app.js"></script>
+    <script src="app_sensor.js"></script>
+    <script src="app_motors.js"></script>
+    <script src="app_pid.js"></script>
+    <script src="app_io.js"></script>
+    <script src="libs/generator/structure.js" defer></script>
+    <script src="libs/generator/logic.js" defer></script>
+    <script src="libs/generator/loops.js" defer></script>
+    <script src="libs/generator/math.js" defer></script>
+    <script src="libs/generator/text.js" defer></script>
+    <script src="libs/generator/variables.js" defer></script>
+    <script src="libs/generator/procedures.js" defer></script>
+    <script src="libs/generator/arduino_io.js" defer></script>
+    <script src="libs/generator/arduino_time.js" defer></script>
+    <script src="libs/generator/arduino_serial.js" defer></script>
+    <script src="libs/generator/sensors.js" defer></script>
+    <script src="libs/generator/ultrasonic.js" defer></script>
+    <script src="libs/generator/encoder.js" defer></script>
+    <script src="libs/generator/servo.js" defer></script>
+    <script src="libs/generator/stepper.js" defer></script>
+    <script src="libs/generator/l298n.js" defer></script>
+    <script src="libs/generator/blink.js" defer></script>
+    <script src="libs/generator/pid.js" defer></script>
+
+    <script src="libs/prism/components/prism-core.min.js"></script>
+    <script src="libs/prism/components/prism-clike.min.js"></script>
+    <script src="libs/prism/components/prism-cpp.min.js"></script>
+
+    <!-- Add IPC Handler -->
+    <script src="ipc_handler.js"></script>
+
+    </body>
+</html>
