@@ -81,7 +81,8 @@ $directories = @(
     "arduino-data/downloads",
     "arduino-data/packages",
     "arduino-data/libraries",
-    "arduino-data/user"
+    "arduino-data/user",
+    "offline-resources"
 )
 
 foreach ($dir in $directories) {
@@ -109,6 +110,9 @@ if (Test-Path "dist") {
 if (Test-Path "arduino-data/*") {
     Remove-Item -Recurse -Force "arduino-data/*" -ErrorAction SilentlyContinue
 }
+if (Test-Path "offline-resources/*") {
+    Remove-Item -Recurse -Force "offline-resources/*" -ErrorAction SilentlyContinue
+}
 
 # Install dependencies
 Write-Host "📦 Installing dependencies..." -ForegroundColor Yellow
@@ -134,10 +138,21 @@ catch {
     Handle-Error "Failed to install dependencies: $_"
 }
 
+# Download Arduino CLI and required packages
+Write-Host "📥 Downloading Arduino CLI and packages..." -ForegroundColor Yellow
+try {
+    # Run download_deps script to get Arduino CLI and packages
+    npm run download-deps
+    Write-Host "✅ Arduino CLI and packages downloaded" -ForegroundColor Green
+}
+catch {
+    Handle-Error "Failed to download Arduino CLI and packages: $_"
+}
+
 # Prepare build environment
 Write-Host "🔧 Preparing build environment..." -ForegroundColor Yellow
 try {
-    # Run prepare-build script to download and setup Arduino CLI
+    # Run prepare-build script
     npm run prepare-build
     Write-Host "✅ Build environment prepared" -ForegroundColor Green
 }
@@ -168,9 +183,9 @@ if (Test-Path $offlineDir) {
 }
 New-Item -ItemType Directory -Path $offlineDir | Out-Null
 
-# Copy installer and Arduino data
+# Copy installer and resources
 Copy-Item -Path "dist/*.exe" -Destination $offlineDir
-Copy-Item -Path "arduino-data" -Destination "$offlineDir/arduino-data" -Recurse
+Copy-Item -Path "offline-resources" -Destination "$offlineDir/offline-resources" -Recurse
 
 # Create README for offline package
 @"
