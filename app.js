@@ -44,7 +44,7 @@ const boardPins = {
 };
 
 // IPC Handler setup with fallback for web
-let ipcHandler = {
+let appIpcHandler = {
     listPorts: async () => [],
     detectBoard: async () => null,
     uploadCode: async () => { throw new Error('Upload not available in web mode') },
@@ -55,13 +55,34 @@ let ipcHandler = {
 try {
     if (typeof window !== 'undefined' && window.require) {
         // We're in Electron
-        ipcHandler = window.require('./ipc_handler');
+        try {
+            appIpcHandler = window.require('./ipc_handler');
+            if (!appIpcHandler || typeof appIpcHandler.listPorts !== 'function') {
+                throw new Error('Invalid IPC handler module');
+            }
+            console.log('Electron IPC handler initialized successfully');
+        } catch (electronError) {
+            console.error('Failed to initialize Electron IPC handler:', electronError);
+            showStatus("Error initializing hardware features. Some features may be disabled.", "error");
+        }
     } else if (typeof window !== 'undefined' && window.ipcHandler) {
         // We're in browser but ipcHandler was loaded as a script
-        ipcHandler = window.ipcHandler;
+        try {
+            appIpcHandler = window.ipcHandler;
+            if (!appIpcHandler || typeof appIpcHandler.listPorts !== 'function') {
+                throw new Error('Invalid IPC handler object');
+            }
+            console.log('Browser IPC handler initialized successfully');
+        } catch (browserError) {
+            console.error('Failed to initialize browser IPC handler:', browserError);
+            showStatus("Error initializing hardware features. Some features may be disabled.", "error");
+        }
+    } else {
+        console.log('Running in web mode - Hardware features disabled');
     }
 } catch (e) {
-    console.log('Running in web mode - IPC features disabled:', e);
+    console.error('Error during IPC handler initialization:', e);
+    showStatus("Error initializing hardware features. Some features may be disabled.", "error");
 }
 
 // Function generators for dropdowns - Defined globally
@@ -92,12 +113,19 @@ function initialize() {
     selectedBoard = boardSelector ? boardSelector.value : 'uno';
 
     // --- Check for Electron IPC ---
-    if (!window.require) {
-        showStatus("Warning: Not running in Electron environment. Connect/Serial features disabled.", "warning");
+    if (!appIpcHandler.isElectron) {
+        showStatus("Running in web mode. Hardware features are disabled.", "warning");
         disableElement('refreshPortsButton', true);
         disableElement('portSelector', true);
         disableElement('uploadButton', true);
         disableElement('serialButton', true);
+    } else {
+        showStatus("Running in Electron mode. Hardware features are enabled.", "info");
+        // Enable hardware-dependent buttons
+        disableElement('refreshPortsButton', false);
+        disableElement('portSelector', false);
+        disableElement('uploadButton', false);
+        disableElement('serialButton', false);
     }
 
     // --- Ensure Arduino Generator is initialized ---
@@ -361,7 +389,7 @@ async function populatePortSelector() {
 
     try {
         showStatus("Scanning for ports...", "info");
-        const ports = await ipcHandler.listPorts();
+        const ports = await appIpcHandler.listPorts();
         
         // Clear existing options
         portSelector.innerHTML = '<option value="">-- Select Port --</option>';
@@ -406,14 +434,14 @@ async function handleUpload() {
         showStatus("Uploading code...", "info");
         
         // First detect the board
-        const boardInfo = await ipcHandler.detectBoard(selectedPort);
+        const boardInfo = await appIpcHandler.detectBoard(selectedPort);
         if (!boardInfo) {
             showStatus("Could not detect board. Is it connected properly?", "error");
             return;
         }
 
         // Upload the code
-        const result = await ipcHandler.uploadCode(code, selectedPort, boardInfo.boards[0].fqbn);
+        const result = await appIpcHandler.uploadCode(code, selectedPort, boardInfo.boards[0].fqbn);
         
         if (result.success) {
             showStatus(result.message, "success");
