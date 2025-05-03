@@ -1,13 +1,8 @@
 # Setup script for ExoiDuino
 # This script handles the complete installation and build process
 
-# Get the directory where the script is located (where git was cloned)
-$baseDir = $PSScriptRoot
-if (-not $baseDir) {
-    $baseDir = Split-Path -Parent -Path $MyInvocation.MyCommand.Definition
-}
-Set-Location $baseDir
-
+# Get absolute path where the script is running
+$baseDir = Get-Location
 Write-Host "🚀 Starting ExoiDuino Setup in: $baseDir" -ForegroundColor Cyan
 
 # Function to check if a command exists
@@ -21,34 +16,6 @@ function Handle-Error {
     Write-Host "❌ Error: $ErrorMessage" -ForegroundColor Red
     Write-Host "Please fix the error and run the script again."
     exit 1
-}
-
-# Function to check directory permissions
-function Test-DirectoryAccess {
-    param($Path)
-    try {
-        $testFile = Join-Path $Path "test.tmp"
-        New-Item -ItemType File -Path $testFile -Force | Out-Null
-        Remove-Item $testFile -Force
-        return $true
-    }
-    catch {
-        return $false
-    }
-}
-
-# Function to backup existing files
-function Backup-ExistingFiles {
-    $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-    $backupDir = Join-Path $baseDir "backup_$timestamp"
-    
-    if (Test-Path (Join-Path $baseDir "arduino-data")) {
-        Copy-Item -Path (Join-Path $baseDir "arduino-data") -Destination $backupDir -Recurse -Force
-    }
-    if (Test-Path (Join-Path $baseDir "package.json")) {
-        Copy-Item -Path (Join-Path $baseDir "package.json") -Destination "$backupDir\package.json" -Force
-    }
-    Write-Host "✅ Created backup in $backupDir" -ForegroundColor Green
 }
 
 # Check prerequisites
@@ -68,102 +35,80 @@ if (-not (Test-Command "npm")) {
 
 Write-Host "✅ Found Node.js $nodeVersion and npm $(npm -v)" -ForegroundColor Green
 
-# Check Git
-if (-not (Test-Command "git")) {
-    Handle-Error "Git is not installed. Please install Git from https://git-scm.com/"
-}
-Write-Host "✅ Found Git" -ForegroundColor Green
-
-# Check directory permissions
-Write-Host "🔍 Checking directory permissions..." -ForegroundColor Yellow
+# Create all necessary directories
 $directories = @(
-    ".",
-    "electron/icons",
-    "electron/scripts",
-    "libs/blockly",
-    "libs/fontawesome",
-    "libs/prism",
-    "libs/generator",
     "arduino-data",
     "arduino-data/downloads",
     "arduino-data/packages",
     "arduino-data/libraries",
     "arduino-data/user",
-    "offline-resources"
+    "offline-resources",
+    "offline-resources/packages",
+    "offline-resources/libraries",
+    "libs/blockly",
+    "libs/blockly/msg",
+    "libs/fontawesome/css",
+    "libs/fontawesome/webfonts",
+    "libs/prism/themes",
+    "libs/prism/components"
 )
 
 foreach ($dir in $directories) {
     $fullPath = Join-Path $baseDir $dir
     if (-not (Test-Path $fullPath)) {
-        New-Item -ItemType Directory -Path $fullPath -Force | Out-Null
-    }
-    if (-not (Test-DirectoryAccess $fullPath)) {
-        Handle-Error "Cannot write to directory: $fullPath. Please check permissions."
+        New-Item -ItemType Directory -Force -Path $fullPath | Out-Null
+        Write-Host "Created directory: $dir"
     }
 }
-Write-Host "✅ Directory permissions verified" -ForegroundColor Green
-
-# Backup existing files
-Write-Host "📦 Creating backup..." -ForegroundColor Yellow
-Backup-ExistingFiles
 
 # Clean previous installation
 Write-Host "🧹 Cleaning previous installation..." -ForegroundColor Yellow
-$cleanPaths = @(
-    (Join-Path $baseDir "node_modules"),
-    (Join-Path $baseDir "dist"),
-    (Join-Path $baseDir "arduino-data/*"),
-    (Join-Path $baseDir "offline-resources/*")
+Remove-Item -Path (Join-Path $baseDir "node_modules") -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -Path (Join-Path $baseDir "dist") -Recurse -Force -ErrorAction SilentlyContinue
+
+# Download web dependencies
+Write-Host "📥 Downloading web dependencies..." -ForegroundColor Yellow
+
+# Blockly files
+$blocklyVersion = "9.2.0"
+$blocklyFiles = @(
+    @{url = "blockly.min.js"; path = "libs/blockly/blockly.min.js"},
+    @{url = "blocks.min.js"; path = "libs/blockly/blocks.min.js"},
+    @{url = "javascript.min.js"; path = "libs/blockly/javascript.min.js"},
+    @{url = "msg/en.min.js"; path = "libs/blockly/msg/en.min.js"}
 )
 
-foreach ($path in $cleanPaths) {
-    if (Test-Path $path) {
-        Remove-Item -Recurse -Force $path -ErrorAction SilentlyContinue
-    }
+foreach ($file in $blocklyFiles) {
+    $url = "https://cdnjs.cloudflare.com/ajax/libs/blockly/$blocklyVersion/$($file.url)"
+    $output = Join-Path $baseDir $file.path
+    Invoke-WebRequest -Uri $url -OutFile $output
+    Write-Host "Downloaded $($file.url)"
 }
 
-# Install dependencies
-Write-Host "📦 Installing dependencies..." -ForegroundColor Yellow
-try {
-    # Install dependencies with exact versions
-    npm install --save node-fetch@2.6.7 @serialport/parser-readline@11.0.1 serialport@11.0.1
-    npm install --save-dev adm-zip@0.5.10 electron@28.3.3 electron-builder@24.13.3 @electron/rebuild@3.6.0 rimraf@5.0.1
+# Install npm dependencies
+Write-Host "📦 Installing npm dependencies..." -ForegroundColor Yellow
+npm install --save node-fetch@2.6.7 @serialport/parser-readline@11.0.1 serialport@11.0.1
+npm install --save-dev adm-zip@0.5.10 electron@28.3.3 electron-builder@24.13.3 @electron/rebuild@3.6.0 rimraf@5.0.1
 
-    Write-Host "✅ Dependencies installed successfully" -ForegroundColor Green
-}
-catch {
-    Handle-Error "Failed to install dependencies: $_"
-}
+# Download and setup Arduino CLI
+Write-Host "📥 Setting up Arduino CLI..." -ForegroundColor Yellow
 
-# Download Arduino CLI and required packages
-Write-Host "📥 Downloading Arduino CLI and packages..." -ForegroundColor Yellow
-try {
-    $tempArduinoDir = Join-Path $baseDir "temp-arduino"
-    $arduinoDataDir = Join-Path $baseDir "arduino-data"
-    $offlineResourcesDir = Join-Path $baseDir "offline-resources"
+$arduinoDataDir = Join-Path $baseDir "arduino-data"
+$arduinoCliPath = Join-Path $arduinoDataDir "arduino-cli.exe"
 
-    # Create necessary directories
-    New-Item -ItemType Directory -Force -Path $tempArduinoDir | Out-Null
-    New-Item -ItemType Directory -Force -Path $arduinoDataDir | Out-Null
-    New-Item -ItemType Directory -Force -Path (Join-Path $arduinoDataDir "packages") | Out-Null
-    New-Item -ItemType Directory -Force -Path (Join-Path $arduinoDataDir "libraries") | Out-Null
-    New-Item -ItemType Directory -Force -Path (Join-Path $arduinoDataDir "downloads") | Out-Null
-    New-Item -ItemType Directory -Force -Path (Join-Path $arduinoDataDir "user") | Out-Null
-    New-Item -ItemType Directory -Force -Path $offlineResourcesDir | Out-Null
-
-    # Download Arduino CLI
+# Download Arduino CLI if not exists
+if (-not (Test-Path $arduinoCliPath)) {
     $arduinoCliUrl = "https://downloads.arduino.cc/arduino-cli/arduino-cli_latest_Windows_64bit.zip"
-    $arduinoCliZip = Join-Path $tempArduinoDir "arduino-cli.zip"
+    $tempZip = Join-Path $arduinoDataDir "temp.zip"
     
-    Write-Host "Downloading Arduino CLI..."
-    Invoke-WebRequest -Uri $arduinoCliUrl -OutFile $arduinoCliZip
-    
-    # Extract Arduino CLI
-    Expand-Archive -Path $arduinoCliZip -DestinationPath $tempArduinoDir -Force
-    Copy-Item -Path (Join-Path $tempArduinoDir "arduino-cli.exe") -Destination $arduinoDataDir -Force
+    Invoke-WebRequest -Uri $arduinoCliUrl -OutFile $tempZip
+    Expand-Archive -Path $tempZip -DestinationPath $arduinoDataDir -Force
+    Remove-Item $tempZip -Force
+}
 
-    # Create Arduino CLI config
-    $configContent = @"
+# Create Arduino CLI config
+$configPath = Join-Path $arduinoDataDir "arduino-cli.yaml"
+@"
 board_manager:
   additional_urls: []
 daemon:
@@ -176,98 +121,66 @@ logging:
   file: ""
   format: "text"
   level: "info"
-"@
+"@ | Set-Content $configPath
 
-    $configPath = Join-Path $arduinoDataDir "arduino-cli.yaml"
-    Set-Content -Path $configPath -Value $configContent
+# Initialize Arduino CLI
+Write-Host "Initializing Arduino CLI..."
+& $arduinoCliPath config init --overwrite --config-file $configPath
+& $arduinoCliPath core update-index --config-file $configPath
 
-    # Initialize Arduino CLI
-    $arduinoCli = Join-Path $arduinoDataDir "arduino-cli.exe"
-    Write-Host "Initializing Arduino CLI..."
-    & $arduinoCli config init --overwrite --config-file $configPath
-    & $arduinoCli core update-index --config-file $configPath
-
-    # Install required board packages
-    $requiredBoards = @(
-        "arduino:avr",
-        "arduino:megaavr"
-    )
-
-    foreach ($board in $requiredBoards) {
-        Write-Host "Installing board package: $board"
-        & $arduinoCli core install $board --config-file $configPath
-    }
-
-    # Install required libraries (excluding built-in ones)
-    $requiredLibraries = @(
-        "Servo",
-        "Stepper",
-        "Firmata"
-    )
-
-    foreach ($lib in $requiredLibraries) {
-        Write-Host "Installing library: $lib"
-        & $arduinoCli lib install $lib --config-file $configPath
-    }
-
-    # Copy Arduino CLI to offline resources
-    Write-Host "Copying resources to offline directory..."
-    Copy-Item -Path $arduinoCli -Destination $offlineResourcesDir -Force
-    Copy-Item -Path $configPath -Destination $offlineResourcesDir -Force
-    
-    # Copy board packages and libraries if they exist
-    $packagesDir = Join-Path $arduinoDataDir "packages"
-    $librariesDir = Join-Path $arduinoDataDir "libraries"
-    
-    if (Test-Path $packagesDir) {
-        $targetPackagesDir = Join-Path $offlineResourcesDir "packages"
-        New-Item -ItemType Directory -Force -Path $targetPackagesDir | Out-Null
-        Copy-Item -Path "$packagesDir\*" -Destination $targetPackagesDir -Recurse -Force
-    }
-    
-    if (Test-Path $librariesDir) {
-        $targetLibrariesDir = Join-Path $offlineResourcesDir "libraries"
-        New-Item -ItemType Directory -Force -Path $targetLibrariesDir | Out-Null
-        Copy-Item -Path "$librariesDir\*" -Destination $targetLibrariesDir -Recurse -Force
-    }
-
-    # Clean up temp directory
-    Remove-Item -Path $tempArduinoDir -Recurse -Force
-
-    Write-Host "✅ Arduino CLI and packages downloaded" -ForegroundColor Green
+# Install board packages
+$boards = @("arduino:avr", "arduino:megaavr")
+foreach ($board in $boards) {
+    Write-Host "Installing board package: $board"
+    & $arduinoCliPath core install $board --config-file $configPath
 }
-catch {
-    Handle-Error "Failed to download Arduino CLI and packages: $_"
+
+# Install libraries
+$libraries = @("Servo", "Stepper", "Firmata")
+foreach ($lib in $libraries) {
+    Write-Host "Installing library: $lib"
+    & $arduinoCliPath lib install $lib --config-file $configPath
+}
+
+# Copy resources to offline directory
+Write-Host "📦 Preparing offline resources..." -ForegroundColor Yellow
+$offlineResourcesDir = Join-Path $baseDir "offline-resources"
+
+# Copy Arduino CLI and config
+Copy-Item -Path $arduinoCliPath -Destination $offlineResourcesDir -Force
+Copy-Item -Path $configPath -Destination $offlineResourcesDir -Force
+
+# Copy packages and libraries
+$packagesDir = Join-Path $arduinoDataDir "packages"
+$librariesDir = Join-Path $arduinoDataDir "libraries"
+
+if (Test-Path $packagesDir) {
+    Copy-Item -Path "$packagesDir\*" -Destination (Join-Path $offlineResourcesDir "packages") -Recurse -Force
+}
+if (Test-Path $librariesDir) {
+    Copy-Item -Path "$librariesDir\*" -Destination (Join-Path $offlineResourcesDir "libraries") -Recurse -Force
 }
 
 # Build the application
 Write-Host "🏗️ Building the application..." -ForegroundColor Yellow
-try {
-    npm run build:win
-    Write-Host "✅ Application built successfully" -ForegroundColor Green
-}
-catch {
-    Handle-Error "Failed to build application: $_"
-}
+npm run build:win
 
 # Verify the build
-if (-not (Test-Path (Join-Path $baseDir "dist/*.exe"))) {
+$distExe = Get-ChildItem -Path (Join-Path $baseDir "dist") -Filter "*.exe" -Recurse
+if (-not $distExe) {
     Handle-Error "Build verification failed: No executable found in dist directory"
 }
 
 # Create offline package
 Write-Host "📦 Creating offline package..." -ForegroundColor Yellow
 $offlineDir = Join-Path $baseDir "ExoiDuino-Offline"
-if (Test-Path $offlineDir) {
-    Remove-Item -Recurse -Force $offlineDir
-}
-New-Item -ItemType Directory -Path $offlineDir | Out-Null
+New-Item -ItemType Directory -Force -Path $offlineDir | Out-Null
 
 # Copy installer and resources
-Copy-Item -Path (Join-Path $baseDir "dist/*.exe") -Destination $offlineDir
-Copy-Item -Path (Join-Path $baseDir "offline-resources") -Destination "$offlineDir/offline-resources" -Recurse
+Copy-Item -Path $distExe.FullName -Destination $offlineDir
+Copy-Item -Path $offlineResourcesDir -Destination "$offlineDir/offline-resources" -Recurse
 
-# Create README for offline package
+# Create README
 @"
 ExoiDuino Offline Installation Package
 ====================================
@@ -285,10 +198,7 @@ Installation:
 No internet connection is required for installation or usage.
 "@ | Out-File -FilePath "$offlineDir/README.txt"
 
-# Final success message
 Write-Host "`n✨ ExoiDuino setup completed successfully! ✨" -ForegroundColor Cyan
 Write-Host "You can find:"
 Write-Host "- The built application in the 'dist' directory"
-Write-Host "- The complete offline package in the '$offlineDir' directory"
-Write-Host "`nTo start the application in development mode, run: npm start"
-Write-Host "To rebuild the application, run: npm run build:win" 
+Write-Host "- The complete offline package in the '$offlineDir' directory" 
