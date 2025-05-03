@@ -77,7 +77,11 @@ $directories = @(
     "libs/fontawesome",
     "libs/prism",
     "libs/generator",
-    "arduino-data"
+    "arduino-data",
+    "arduino-data/downloads",
+    "arduino-data/packages",
+    "arduino-data/libraries",
+    "arduino-data/user"
 )
 
 foreach ($dir in $directories) {
@@ -120,9 +124,9 @@ try {
     npm config set msvs_version 2019
     npm config set python python2.7
 
-    # Install dependencies
-    npm install --save node-fetch@2.6.7 serialport@13.0.0
-    npm install --save-dev electron@28.3.3 electron-builder@24.13.3 electron-rebuild@5.0.0 adm-zip@0.5.10 rimraf@5.0.10
+    # Install dependencies with exact versions
+    npm install --save node-fetch@2.6.7 @serialport/parser-readline@11.0.1 serialport@11.0.1
+    npm install --save-dev adm-zip@0.5.10 electron@28.3.3 electron-builder@24.13.3 @electron/rebuild@3.6.0 rimraf@5.0.1
 
     Write-Host "✅ Dependencies installed successfully" -ForegroundColor Green
 }
@@ -130,14 +134,15 @@ catch {
     Handle-Error "Failed to install dependencies: $_"
 }
 
-# Setup Arduino CLI and dependencies (single call)
-Write-Host "🔧 Setting up Arduino environment..." -ForegroundColor Yellow
+# Prepare build environment
+Write-Host "🔧 Preparing build environment..." -ForegroundColor Yellow
 try {
-    npm run setup-arduino
-    Write-Host "✅ Arduino environment setup complete" -ForegroundColor Green
+    # Run prepare-build script to download and setup Arduino CLI
+    npm run prepare-build
+    Write-Host "✅ Build environment prepared" -ForegroundColor Green
 }
 catch {
-    Handle-Error "Failed to setup Arduino environment: $_"
+    Handle-Error "Failed to prepare build environment: $_"
 }
 
 # Build the application
@@ -155,8 +160,40 @@ if (-not (Test-Path "dist/*.exe")) {
     Handle-Error "Build verification failed: No executable found in dist directory"
 }
 
+# Create offline package
+Write-Host "📦 Creating offline package..." -ForegroundColor Yellow
+$offlineDir = "ExoiDuino-Offline"
+if (Test-Path $offlineDir) {
+    Remove-Item -Recurse -Force $offlineDir
+}
+New-Item -ItemType Directory -Path $offlineDir | Out-Null
+
+# Copy installer and Arduino data
+Copy-Item -Path "dist/*.exe" -Destination $offlineDir
+Copy-Item -Path "arduino-data" -Destination "$offlineDir/arduino-data" -Recurse
+
+# Create README for offline package
+@"
+ExoiDuino Offline Installation Package
+====================================
+
+This package contains:
+1. ExoiDuino installer (ExoiDuino-Setup-*.exe)
+2. Arduino CLI and required board packages
+3. All necessary libraries for offline use
+
+Installation:
+1. Run the ExoiDuino installer
+2. Follow the installation wizard
+3. Start ExoiDuino and enjoy!
+
+No internet connection is required for installation or usage.
+"@ | Out-File -FilePath "$offlineDir/README.txt"
+
 # Final success message
 Write-Host "`n✨ ExoiDuino setup completed successfully! ✨" -ForegroundColor Cyan
-Write-Host "You can find the built application in the 'dist' directory."
-Write-Host "To start the application in development mode, run: npm start"
+Write-Host "You can find:"
+Write-Host "- The built application in the 'dist' directory"
+Write-Host "- The complete offline package in the '$offlineDir' directory"
+Write-Host "`nTo start the application in development mode, run: npm start"
 Write-Host "To rebuild the application, run: npm run build:win" 
