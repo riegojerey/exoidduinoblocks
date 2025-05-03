@@ -2,9 +2,9 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 const AdmZip = require('adm-zip');
-const fetch = require('node-fetch');
 
 const ARDUINO_DATA_DIR = path.join(__dirname, '../../arduino-data');
+const OFFLINE_RESOURCES_DIR = path.join(__dirname, '../../offline-resources');
 const ARDUINO_CLI_PATH = path.join(ARDUINO_DATA_DIR, process.platform === 'win32' ? 'arduino-cli.exe' : 'arduino-cli');
 const ARDUINO_CONFIG_PATH = path.join(ARDUINO_DATA_DIR, 'arduino-cli.yaml');
 
@@ -23,13 +23,23 @@ const REQUIRED_LIBRARIES = [
     'Firmata'
 ];
 
-async function downloadFile(url, outputPath) {
-    console.log(`Downloading from ${url}...`);
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Failed to download: ${response.statusText}`);
-    const buffer = await response.buffer();
-    fs.writeFileSync(outputPath, buffer);
-    console.log(`Downloaded to ${outputPath}`);
+function copyDirectory(src, dest) {
+    if (!fs.existsSync(dest)) {
+        fs.mkdirSync(dest, { recursive: true });
+    }
+
+    const entries = fs.readdirSync(src, { withFileTypes: true });
+
+    for (const entry of entries) {
+        const srcPath = path.join(src, entry.name);
+        const destPath = path.join(dest, entry.name);
+
+        if (entry.isDirectory()) {
+            copyDirectory(srcPath, destPath);
+        } else {
+            fs.copyFileSync(srcPath, destPath);
+        }
+    }
 }
 
 async function prepareBuildFiles() {
@@ -40,16 +50,17 @@ async function prepareBuildFiles() {
         fs.mkdirSync(ARDUINO_DATA_DIR, { recursive: true });
     }
 
-    // Download and extract Arduino CLI if needed
+    // Extract Arduino CLI from offline resources if needed
     if (!fs.existsSync(ARDUINO_CLI_PATH)) {
-        console.log('Downloading Arduino CLI...');
-        const cliUrl = 'https://downloads.arduino.cc/arduino-cli/arduino-cli_latest_Windows_64bit.zip';
-        const zipPath = path.join(ARDUINO_DATA_DIR, 'arduino-cli.zip');
-        await downloadFile(cliUrl, zipPath);
+        console.log('Extracting Arduino CLI from offline resources...');
+        const offlineCliPath = path.join(OFFLINE_RESOURCES_DIR, 'arduino-cli.zip');
         
-        const zip = new AdmZip(zipPath);
+        if (!fs.existsSync(offlineCliPath)) {
+            throw new Error('Arduino CLI offline package not found. Please run download_deps.ps1 first.');
+        }
+        
+        const zip = new AdmZip(offlineCliPath);
         zip.extractAllTo(ARDUINO_DATA_DIR, true);
-        fs.unlinkSync(zipPath);
     }
 
     // Create directories
@@ -88,21 +99,24 @@ logging:
     // Initialize Arduino CLI
     console.log('Initializing Arduino CLI...');
     execSync(`"${ARDUINO_CLI_PATH}" config init --overwrite --config-file "${ARDUINO_CONFIG_PATH}"`, { stdio: 'inherit' });
-    execSync(`"${ARDUINO_CLI_PATH}" core update-index --config-file "${ARDUINO_CONFIG_PATH}"`, { stdio: 'inherit' });
 
-    // Install required board packages
-    console.log('Installing board packages...');
-    for (const board of REQUIRED_BOARDS) {
-        console.log(`Installing ${board}...`);
-        execSync(`"${ARDUINO_CLI_PATH}" core install ${board} --config-file "${ARDUINO_CONFIG_PATH}"`, { stdio: 'inherit' });
+    // Copy offline board packages
+    console.log('Installing board packages from offline resources...');
+    const offlineBoardsDir = path.join(OFFLINE_RESOURCES_DIR, 'boards');
+    if (!fs.existsSync(offlineBoardsDir)) {
+        throw new Error('Offline board packages not found. Please run download_deps.ps1 first.');
     }
 
-    // Install required libraries
-    console.log('Installing libraries...');
-    for (const lib of REQUIRED_LIBRARIES) {
-        console.log(`Installing ${lib}...`);
-        execSync(`"${ARDUINO_CLI_PATH}" lib install "${lib}" --config-file "${ARDUINO_CONFIG_PATH}"`, { stdio: 'inherit' });
+    copyDirectory(offlineBoardsDir, path.join(ARDUINO_DATA_DIR, 'packages'));
+
+    // Copy offline libraries
+    console.log('Installing libraries from offline resources...');
+    const offlineLibsDir = path.join(OFFLINE_RESOURCES_DIR, 'libraries');
+    if (!fs.existsSync(offlineLibsDir)) {
+        throw new Error('Offline libraries not found. Please run download_deps.ps1 first.');
     }
+
+    copyDirectory(offlineLibsDir, path.join(ARDUINO_DATA_DIR, 'libraries'));
 
     console.log('Build files prepared successfully!');
 }

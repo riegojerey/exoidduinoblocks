@@ -95,4 +95,85 @@ foreach ($file in $prismFiles) {
     Write-Host "Downloaded $($file.url)"
 }
 
-Write-Host "All dependencies downloaded successfully!" 
+# Download Arduino CLI and required packages for offline use
+$ErrorActionPreference = "Stop"
+
+$offlineResourcesDir = Join-Path $PSScriptRoot "offline-resources"
+$arduinoCliUrl = "https://downloads.arduino.cc/arduino-cli/arduino-cli_latest_Windows_64bit.zip"
+$arduinoCliPath = Join-Path $offlineResourcesDir "arduino-cli.zip"
+$tempArduinoDir = Join-Path $PSScriptRoot "temp-arduino"
+$tempConfigPath = Join-Path $tempArduinoDir "arduino-cli.yaml"
+
+# Create directories
+New-Item -ItemType Directory -Force -Path $offlineResourcesDir | Out-Null
+New-Item -ItemType Directory -Force -Path $tempArduinoDir | Out-Null
+
+# Download Arduino CLI
+Write-Host "Downloading Arduino CLI..."
+Invoke-WebRequest -Uri $arduinoCliUrl -OutFile $arduinoCliPath
+
+# Extract Arduino CLI to temp directory
+Expand-Archive -Path $arduinoCliPath -DestinationPath $tempArduinoDir -Force
+
+# Create temporary config
+$configContent = @"
+board_manager:
+  additional_urls: []
+daemon:
+  port: "50051"
+directories:
+  data: "$($tempArduinoDir.Replace('\','/'))"
+  downloads: "$((Join-Path $tempArduinoDir 'downloads').Replace('\','/'))"
+  user: "$((Join-Path $tempArduinoDir 'user').Replace('\','/'))"
+logging:
+  file: ""
+  format: "text"
+  level: "info"
+"@
+
+Set-Content -Path $tempConfigPath -Value $configContent
+
+# Initialize Arduino CLI
+$arduinoCli = Join-Path $tempArduinoDir "arduino-cli.exe"
+Write-Host "Initializing Arduino CLI..."
+& $arduinoCli config init --overwrite --config-file $tempConfigPath
+& $arduinoCli core update-index --config-file $tempConfigPath
+
+# Install required board packages
+$requiredBoards = @(
+    "arduino:avr",
+    "arduino:megaavr"
+)
+
+foreach ($board in $requiredBoards) {
+    Write-Host "Installing board package: $board"
+    & $arduinoCli core install $board --config-file $tempConfigPath
+}
+
+# Install required libraries
+$requiredLibraries = @(
+    "Servo",
+    "Stepper",
+    "Wire",
+    "SPI",
+    "EEPROM",
+    "Firmata"
+)
+
+foreach ($lib in $requiredLibraries) {
+    Write-Host "Installing library: $lib"
+    & $arduinoCli lib install $lib --config-file $tempConfigPath
+}
+
+# Copy installed packages and libraries to offline-resources
+$offlineBoardsDir = Join-Path $offlineResourcesDir "boards"
+$offlineLibsDir = Join-Path $offlineResourcesDir "libraries"
+
+Write-Host "Copying installed resources to offline directory..."
+Copy-Item -Path (Join-Path $tempArduinoDir "packages") -Destination $offlineBoardsDir -Recurse -Force
+Copy-Item -Path (Join-Path $tempArduinoDir "libraries") -Destination $offlineLibsDir -Recurse -Force
+
+# Clean up temp directory
+Remove-Item -Path $tempArduinoDir -Recurse -Force
+
+Write-Host "Dependencies downloaded successfully!" 

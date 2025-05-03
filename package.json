@@ -5,14 +5,15 @@
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
-    "build": "node electron/scripts/prepare-build.js && electron-builder",
-    "build:win": "node electron/scripts/prepare-build.js && electron-builder --win --x64",
+    "build": "pwsh download_deps.ps1 && node electron/scripts/prepare-build.js && electron-builder",
+    "build:win": "pwsh download_deps.ps1 && node electron/scripts/prepare-build.js && electron-builder --win --x64",
     "postinstall": "node electron/scripts/setup-arduino-cli.js",
     "rebuild": "@electron/rebuild",
     "setup-arduino": "node electron/scripts/install-arduino-deps.js",
     "pack-resources": "node electron/scripts/pack-resources.js",
-    "clean": "rimraf node_modules arduino-data dist",
-    "prepare-build": "node electron/scripts/prepare-build.js"
+    "clean": "rimraf node_modules arduino-data dist offline-resources",
+    "prepare-build": "node electron/scripts/prepare-build.js",
+    "download-deps": "pwsh download_deps.ps1"
   },
   "author": "Exoid Robotics",
   "license": "MIT",
@@ -58,6 +59,13 @@
           "boards/**/*",
           "libraries/**/*",
           "packages/**/*"
+        ]
+      },
+      {
+        "from": "offline-resources",
+        "to": "offline-resources",
+        "filter": [
+          "**/*"
         ]
       },
       {
