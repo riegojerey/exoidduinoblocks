@@ -1,14 +1,22 @@
-const { ipcRenderer } = require('electron');
-
-// Timeout for IPC calls (30 seconds)
+// Initialize variables for IPC handling
+let ipcRenderer;
 const IPC_TIMEOUT = 30000;
 
 // Check if running in Electron
-const isElectron = !!window.require;
+const isElectron = typeof window !== 'undefined' && window.require;
+
+// Initialize IPC if in Electron environment
+if (isElectron) {
+    try {
+        ipcRenderer = window.require('electron').ipcRenderer;
+    } catch (e) {
+        console.warn('Failed to initialize Electron IPC:', e);
+    }
+}
 
 // Wrapper for IPC calls with timeout
 async function invokeWithTimeout(channel, ...args) {
-    if (!isElectron) {
+    if (!isElectron || !ipcRenderer) {
         throw new Error('Not running in Electron environment');
     }
 
@@ -82,11 +90,19 @@ async function installBoard(boardPackage) {
     }
 }
 
-module.exports = {
+// Create a default export object that works in both browser and Node.js
+const ipcHandler = {
     listPorts,
     detectBoard,
     uploadCode,
     installLibrary,
     installBoard,
     isElectron
-}; 
+};
+
+// Export for both browser and Node.js environments
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = ipcHandler;
+} else {
+    window.ipcHandler = ipcHandler;
+} 

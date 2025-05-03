@@ -43,6 +43,27 @@ const boardPins = {
     }
 };
 
+// IPC Handler setup with fallback for web
+let ipcHandler = {
+    listPorts: async () => [],
+    detectBoard: async () => null,
+    uploadCode: async () => { throw new Error('Upload not available in web mode') },
+    isElectron: false
+};
+
+// Initialize IPC Handler
+try {
+    if (typeof window !== 'undefined' && window.require) {
+        // We're in Electron
+        ipcHandler = window.require('./ipc_handler');
+    } else if (typeof window !== 'undefined' && window.ipcHandler) {
+        // We're in browser but ipcHandler was loaded as a script
+        ipcHandler = window.ipcHandler;
+    }
+} catch (e) {
+    console.log('Running in web mode - IPC features disabled:', e);
+}
+
 // Function generators for dropdowns - Defined globally
 function getDigitalPinOptions() { return boardPins[selectedBoard]?.digital || boardPins['uno'].digital; }
 function getPWMPinOptions() { return boardPins[selectedBoard]?.pwm || boardPins['uno'].pwm; }
@@ -63,24 +84,6 @@ const ARDUINO_GENERAL_HUE = 180; // Teal/Cyan
 const ARDUINO_SERIAL_HUE = 170; // Teal/Blue
 const SENSORS_HUE = 40; // New color for Sensors (Orange/Yellow)
 const MOTORS_HUE = "#FF6680"; // Custom Color for Motors
-
-// IPC Handler setup
-let ipcHandler = {
-    listPorts: async () => [],
-    detectBoard: async () => null,
-    uploadCode: async () => { throw new Error('Upload not available in web mode') },
-    isElectron: false
-};
-
-try {
-    if (window.require) {
-        ipcHandler = require('./ipc_handler');
-    } else {
-        console.log('Running in web mode - IPC features disabled');
-    }
-} catch (e) {
-    console.log('Running in web mode - IPC features disabled');
-}
 
 // --- Main Initialization Function ---
 function initialize() {
