@@ -101,6 +101,27 @@ npm install --save-dev adm-zip@0.5.10 electron@28.3.3 electron-builder@24.13.3 @
 # Download and setup Arduino CLI
 Write-Host "📥 Setting up Arduino CLI..." -ForegroundColor Yellow
 
+$arduinoCliPath = Join-Path $arduinoDataDir "arduino-cli.exe"
+
+# Download Arduino CLI if not exists
+if (-not (Test-Path $arduinoCliPath)) {
+    Write-Host "Downloading Arduino CLI..."
+    $arduinoCliUrl = "https://downloads.arduino.cc/arduino-cli/arduino-cli_latest_Windows_64bit.zip"
+    $tempZip = Join-Path $arduinoDataDir "temp.zip"
+    
+    try {
+        Invoke-WebRequest -Uri $arduinoCliUrl -OutFile $tempZip
+        Expand-Archive -Path $tempZip -DestinationPath $arduinoDataDir -Force
+        Remove-Item $tempZip -Force
+        
+        if (-not (Test-Path $arduinoCliPath)) {
+            throw "Arduino CLI executable not found after extraction"
+        }
+    } catch {
+        Handle-Error "Failed to download or extract Arduino CLI: $_"
+    }
+}
+
 # Create Arduino CLI config with proper path escaping
 $configPath = Join-Path $arduinoDataDir "arduino-cli.yaml"
 $escapedDataDir = $arduinoDataDir.Replace('\', '/').Replace('"', '\"')
@@ -124,7 +145,6 @@ logging:
 
 # Initialize Arduino CLI with proper error handling
 Write-Host "Initializing Arduino CLI..."
-$arduinoCliPath = Join-Path $arduinoDataDir "arduino-cli.exe"
 
 try {
     & $arduinoCliPath config init --overwrite --config-file $configPath
