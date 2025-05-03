@@ -369,43 +369,45 @@
         </category>
     </xml>
 
+    <!-- Add scripts at the end of body -->
     <script src="libs/blockly/blockly.min.js"></script>
     <script src="libs/blockly/blocks.min.js"></script>
     <script src="libs/blockly/javascript.min.js"></script>
-    <script src="libs/blockly/msg/en.min.js"></script>
+    <script src="libs/blockly/en.min.js"></script>
 
-    <script src="libs/generator/arduino_generator_init.js"></script>
-
-    <script src="app.js"></script>
-    <script src="app_sensor.js"></script>
-    <script src="app_motors.js"></script>
-    <script src="app_pid.js"></script>
-    <script src="app_io.js"></script>
-    <script src="libs/generator/structure.js" defer></script>
-    <script src="libs/generator/logic.js" defer></script>
-    <script src="libs/generator/loops.js" defer></script>
-    <script src="libs/generator/math.js" defer></script>
-    <script src="libs/generator/text.js" defer></script>
-    <script src="libs/generator/variables.js" defer></script>
-    <script src="libs/generator/procedures.js" defer></script>
-    <script src="libs/generator/arduino_io.js" defer></script>
-    <script src="libs/generator/arduino_time.js" defer></script>
-    <script src="libs/generator/arduino_serial.js" defer></script>
-    <script src="libs/generator/sensors.js" defer></script>
-    <script src="libs/generator/ultrasonic.js" defer></script>
-    <script src="libs/generator/encoder.js" defer></script>
-    <script src="libs/generator/servo.js" defer></script>
-    <script src="libs/generator/stepper.js" defer></script>
-    <script src="libs/generator/l298n.js" defer></script>
-    <script src="libs/generator/blink.js" defer></script>
-    <script src="libs/generator/pid.js" defer></script>
-
+    <!-- Prism.js in correct order -->
     <script src="libs/prism/components/prism-core.min.js"></script>
     <script src="libs/prism/components/prism-clike.min.js"></script>
     <script src="libs/prism/components/prism-cpp.min.js"></script>
 
-    <!-- Add IPC Handler -->
+    <!-- Generator scripts -->
+    <script src="libs/generator/arduino_generator_init.js"></script>
+    <script src="libs/generator/arduino_io.js"></script>
+    <script src="libs/generator/arduino_serial.js"></script>
+    <script src="libs/generator/arduino_time.js"></script>
+    <script src="libs/generator/blink.js"></script>
+    <script src="libs/generator/encoder.js"></script>
+    <script src="libs/generator/l298n.js"></script>
+    <script src="libs/generator/logic.js"></script>
+    <script src="libs/generator/loops.js"></script>
+    <script src="libs/generator/math.js"></script>
+    <script src="libs/generator/pid.js"></script>
+    <script src="libs/generator/procedures.js"></script>
+    <script src="libs/generator/sensors.js"></script>
+    <script src="libs/generator/servo.js"></script>
+    <script src="libs/generator/stepper.js"></script>
+    <script src="libs/generator/structure.js"></script>
+    <script src="libs/generator/text.js"></script>
+    <script src="libs/generator/ultrasonic.js"></script>
+    <script src="libs/generator/variables.js"></script>
+
+    <!-- App scripts -->
+    <script src="app_io.js"></script>
+    <script src="app_motors.js"></script>
+    <script src="app_pid.js"></script>
+    <script src="app_sensor.js"></script>
     <script src="ipc_handler.js"></script>
+    <script src="app.js"></script>
 
     </body>
 </html>
