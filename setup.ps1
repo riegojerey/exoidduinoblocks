@@ -145,6 +145,10 @@ try {
     # Create necessary directories
     New-Item -ItemType Directory -Force -Path $tempArduinoDir | Out-Null
     New-Item -ItemType Directory -Force -Path $arduinoDataDir | Out-Null
+    New-Item -ItemType Directory -Force -Path (Join-Path $arduinoDataDir "packages") | Out-Null
+    New-Item -ItemType Directory -Force -Path (Join-Path $arduinoDataDir "libraries") | Out-Null
+    New-Item -ItemType Directory -Force -Path (Join-Path $arduinoDataDir "downloads") | Out-Null
+    New-Item -ItemType Directory -Force -Path (Join-Path $arduinoDataDir "user") | Out-Null
     New-Item -ItemType Directory -Force -Path $offlineResourcesDir | Out-Null
 
     # Download Arduino CLI
@@ -206,13 +210,25 @@ logging:
         & $arduinoCli lib install $lib --config-file $configPath
     }
 
-    # Copy installed resources to offline directory
-    Write-Host "Copying installed resources to offline directory..."
-    if (Test-Path (Join-Path $arduinoDataDir "packages")) {
-        Copy-Item -Path (Join-Path $arduinoDataDir "packages") -Destination $offlineResourcesDir -Recurse -Force
+    # Copy Arduino CLI to offline resources
+    Write-Host "Copying resources to offline directory..."
+    Copy-Item -Path $arduinoCli -Destination $offlineResourcesDir -Force
+    Copy-Item -Path $configPath -Destination $offlineResourcesDir -Force
+    
+    # Copy board packages and libraries if they exist
+    $packagesDir = Join-Path $arduinoDataDir "packages"
+    $librariesDir = Join-Path $arduinoDataDir "libraries"
+    
+    if (Test-Path $packagesDir) {
+        $targetPackagesDir = Join-Path $offlineResourcesDir "packages"
+        New-Item -ItemType Directory -Force -Path $targetPackagesDir | Out-Null
+        Copy-Item -Path "$packagesDir\*" -Destination $targetPackagesDir -Recurse -Force
     }
-    if (Test-Path (Join-Path $arduinoDataDir "libraries")) {
-        Copy-Item -Path (Join-Path $arduinoDataDir "libraries") -Destination $offlineResourcesDir -Recurse -Force
+    
+    if (Test-Path $librariesDir) {
+        $targetLibrariesDir = Join-Path $offlineResourcesDir "libraries"
+        New-Item -ItemType Directory -Force -Path $targetLibrariesDir | Out-Null
+        Copy-Item -Path "$librariesDir\*" -Destination $targetLibrariesDir -Recurse -Force
     }
 
     # Clean up temp directory
