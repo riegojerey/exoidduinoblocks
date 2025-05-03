@@ -7,6 +7,65 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="libs/fontawesome/css/all.min.css">
     <link rel="stylesheet" href="libs/prism/themes/prism-okaidia.min.css">
+    <!-- Web Environment Setup -->
+    <script>
+        // Ensure window object exists
+        window = window || {};
+        
+        // Debug logging
+        console.log('Initializing ExoiDuino environment...');
+        
+        // Environment detection
+        window.isElectron = (function() {
+            try {
+                return typeof require !== 'undefined';
+            } catch (e) {
+                console.log('Running in web browser mode');
+                return false;
+            }
+        })();
+
+        // Create web fallback before any other scripts load
+        if (!window.isElectron) {
+            console.log('Setting up web fallback handlers...');
+            
+            // Web fallback IPC handler
+            window.ipcHandler = {
+                listPorts: async () => {
+                    console.log('Web mode: listPorts called');
+                    return [];
+                },
+                detectBoard: async () => {
+                    console.log('Web mode: detectBoard called');
+                    return null;
+                },
+                uploadCode: async () => {
+                    console.log('Web mode: uploadCode called');
+                    throw new Error('Upload not available in web mode');
+                },
+                isElectron: false
+            };
+
+            // Disable hardware-dependent features
+            window.addEventListener('DOMContentLoaded', function() {
+                console.log('Disabling hardware features in web mode...');
+                ['refreshPortsButton', 'portSelector', 'uploadButton', 'serialButton'].forEach(id => {
+                    const element = document.getElementById(id);
+                    if (element) {
+                        element.disabled = true;
+                        element.title += ' (Disabled in web mode)';
+                    }
+                });
+                
+                // Show web mode notice
+                const statusDiv = document.getElementById('statusMessages');
+                if (statusDiv) {
+                    statusDiv.textContent = 'Running in web mode. Hardware features are disabled.';
+                    statusDiv.className = 'status-messages status-warning';
+                }
+            });
+        }
+    </script>
 </head>
 <body>
     <header>
@@ -370,6 +429,7 @@
     </xml>
 
     <!-- Add scripts at the end of body -->
+    <!-- Core libraries -->
     <script src="libs/blockly/blockly.min.js"></script>
     <script src="libs/blockly/blocks.min.js"></script>
     <script src="libs/blockly/javascript.min.js"></script>
@@ -400,6 +460,20 @@
     <script src="libs/generator/text.js"></script>
     <script src="libs/generator/ultrasonic.js"></script>
     <script src="libs/generator/variables.js"></script>
+
+    <!-- Error handling for script loading -->
+    <script>
+        window.addEventListener('error', function(e) {
+            if (e.filename) {
+                console.error('Script loading error:', e.filename);
+                const statusDiv = document.getElementById('statusMessages');
+                if (statusDiv) {
+                    statusDiv.textContent = 'Error loading required scripts. Check console for details.';
+                    statusDiv.className = 'status-messages status-error';
+                }
+            }
+        }, true);
+    </script>
 
     <!-- App scripts -->
     <script src="ipc_handler.js"></script>

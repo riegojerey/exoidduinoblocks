@@ -81,10 +81,45 @@ app.on('window-all-closed', function () {
     if (process.platform !== 'darwin') app.quit();
 });
 
-// Handle Serial Port operations
+// Enhanced port detection with retries
+async function listPortsWithRetry(maxRetries = 3, delay = 1000) {
+    let lastError;
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            const ports = await SerialPort.list();
+            console.log('Available ports:', ports);
+            
+            // Filter for likely Arduino ports
+            const arduinoPorts = ports.filter(port => {
+                const { manufacturer, vendorId, productId } = port;
+                return (
+                    // Common Arduino manufacturers
+                    (manufacturer && /arduino|wch|ftdi/i.test(manufacturer)) ||
+                    // Common Arduino vendor IDs
+                    (vendorId && /2341|1a86|0403/i.test(vendorId)) ||
+                    // If no manufacturer but has COM or tty in path
+                    (!manufacturer && (port.path.toLowerCase().includes('com') || 
+                                     port.path.toLowerCase().includes('tty')))
+                );
+            });
+
+            console.log('Detected Arduino ports:', arduinoPorts);
+            return arduinoPorts;
+        } catch (error) {
+            console.error(`Attempt ${i + 1} failed:`, error);
+            lastError = error;
+            if (i < maxRetries - 1) {
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+    }
+    throw new Error(`Failed to list ports after ${maxRetries} attempts: ${lastError.message}`);
+}
+
+// Update the list-ports handler
 ipcMain.handle('list-ports', async () => {
     try {
-        const ports = await SerialPort.list();
+        const ports = await listPortsWithRetry();
         return ports;
     } catch (error) {
         console.error('Error listing ports:', error);

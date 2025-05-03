@@ -385,27 +385,48 @@ function generateCodeAndUpdatePreview() {
  */
 async function populatePortSelector() {
     const portSelector = document.getElementById('portSelector');
-    if (!portSelector) return;
+    const refreshButton = document.getElementById('refreshPortsButton');
+    if (!portSelector || !refreshButton) return;
 
     try {
-        showStatus("Scanning for ports...", "info");
+        // Disable the refresh button and show loading state
+        refreshButton.disabled = true;
+        refreshButton.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i>';
+        showStatus("Scanning for Arduino boards...", "info");
+        
         const ports = await appIpcHandler.listPorts();
         
         // Clear existing options
         portSelector.innerHTML = '<option value="">-- Select Port --</option>';
         
-        // Add new options
-        ports.forEach(port => {
-            const option = document.createElement('option');
-            option.value = port.path;
-            option.textContent = `${port.path} - ${port.manufacturer || 'Unknown'}`;
-            portSelector.appendChild(option);
-        });
-
         if (ports.length === 0) {
-            showStatus("No ports found. Is your Arduino connected?", "warning");
+            showStatus("No Arduino boards found. Please check your connection.", "warning");
+            portSelector.innerHTML += '<option value="" disabled>No ports available</option>';
         } else {
-            showStatus(`Found ${ports.length} port(s)`, "success");
+            // Add new options
+            ports.forEach(port => {
+                const option = document.createElement('option');
+                option.value = port.path;
+                
+                // Create a descriptive label
+                let label = port.path;
+                if (port.manufacturer) {
+                    label += ` - ${port.manufacturer}`;
+                }
+                if (port.vendorId && port.productId) {
+                    label += ` (VID:${port.vendorId} PID:${port.productId})`;
+                }
+                
+                option.textContent = label;
+                portSelector.appendChild(option);
+            });
+
+            showStatus(`Found ${ports.length} Arduino ${ports.length === 1 ? 'board' : 'boards'}`, "success");
+            
+            // If there's only one port, select it automatically
+            if (ports.length === 1) {
+                portSelector.value = ports[0].path;
+            }
         }
 
         portSelector.disabled = false;
@@ -413,6 +434,11 @@ async function populatePortSelector() {
         console.error('Error listing ports:', error);
         showStatus("Failed to scan ports: " + error.message, "error");
         portSelector.disabled = true;
+        portSelector.innerHTML = '<option value="">-- Error Scanning Ports --</option>';
+    } finally {
+        // Re-enable the refresh button and restore its original state
+        refreshButton.disabled = false;
+        refreshButton.innerHTML = '<i class="fas fa-sync-alt"></i>';
     }
 }
 
