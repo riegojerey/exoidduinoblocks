@@ -1,41 +1,51 @@
-# Dependencies
+# Node.js
 node_modules/
-arduino-data/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+pnpm-lock.yaml
 
-# Build outputs
+# Build output
 dist/
 build/
+out/
+
+# Logs
+*.log
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# IDE / Editor specific
+.vscode/ # Keep extensions.json and project-specific settings.json if desired
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.suo
+*.user
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+
+# Electron specific (if using electron-builder or similar)
+# release/
+# *.asar
+# *.dmg
+# *.exe
+# *.AppImage
+# *.snap
+
+# If you have any local configuration files that shouldn't be committed, add them here.
+# For example:
+# .env
 
 # Environment
 .env
 .env.local
-
-# IDE
-.vscode/
-.idea/
-
-# Logs
-*.log
-npm-debug.log*
-
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Optional npm cache directory
-.npm
-
-# Optional eslint cache
-.eslintcache
-
-# Package-lock (since we're specifying exact versions)
-package-lock.json
-
-# OS files
-.DS_Store
-Thumbs.db
 
 # Environment variables
 .env
