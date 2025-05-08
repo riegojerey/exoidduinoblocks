@@ -15,6 +15,8 @@ Blockly.Blocks['variables_set'] = {
             .appendField('set')
             .appendField(new Blockly.FieldDropdown([
                 ['int', 'int'],
+                ['const int', 'const int'],
+                ['unsigned long', 'unsigned long'],
                 ['double', 'double'],
                 ['float', 'float'],
                 ['string', 'string']
@@ -24,7 +26,7 @@ Blockly.Blocks['variables_set'] = {
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour(330);
-        this.setTooltip('Sets a variable to a value.');
+        this.setTooltip('Sets a variable or declares a constant. Choose the appropriate type.');
         this.setHelpUrl('');
     },
     
@@ -68,16 +70,33 @@ Blockly.Arduino['variables_set'] = function(block) {
         })(b.getParent())
     );
 
-    // If float/double and value is a whole number, append .0
+    // Function to ensure decimal point for float/double
     function ensureDecimal(val) {
-        // Only add .0 if val is a number or a string representing an integer
         if (/^[-+]?\d+$/.test(val)) {
             return val + '.0';
         }
         return val;
     }
+    
+    // Function to ensure suffix for unsigned long
+    function ensureUnsignedLong(val) {
+        if (/^\d+$/.test(val) && !val.toLowerCase().endsWith('ul')) {
+             // Only add UL if it's a plain integer string
+            return val + 'UL';
+        }
+        // If value is millis() or micros(), it's already unsigned long
+        if (val === 'millis()' || val === 'micros()') {
+            return val;
+        }
+        // Otherwise, cast potential other types or variables
+        return `(unsigned long)(${val})`; 
+    }
+
+    // Adjust value based on type
     if (varType === 'float' || varType === 'double') {
         value = ensureDecimal(value);
+    } else if (varType === 'unsigned long') {
+        value = ensureUnsignedLong(value); // Ensure correct literal/casting
     }
 
     // Generate declaration string
@@ -89,34 +108,49 @@ Blockly.Arduino['variables_set'] = function(block) {
         case 'double':
             declaration = `double ${varName} = ${value};`;
             break;
+        case 'unsigned long':
+            declaration = `unsigned long ${varName} = ${value};`;
+            break;
+        case 'const int':
+            declaration = `const int ${varName} = ${value};`;
+            break;
         case 'string':
-            declaration = `String ${varName} = String(${value});`;
+             // Ensure value is properly cast to String if it's not already quoted text
+            if (!(value.startsWith('"') && value.endsWith('"'))) {
+                 value = `String(${value})`;
+            }
+            declaration = `String ${varName} = ${value};`;
             break;
         default:
             declaration = `int ${varName} = ${value};`;
     }
 
     // If set in setup, declare globally and only assign in loop
-    if (isSetInSetup) {
-        // Only declare globally once
+    if (varType === 'const int') {
+        // Constants MUST be declared globally and only once.
         if (!Blockly.Arduino.definitions_['var_' + varName]) {
             Blockly.Arduino.definitions_['var_' + varName] = declaration;
         }
-        // If in loop, just assign
-        if (parent && parent.type === 'arduino_loop') {
-            return `${varName} = ${value};\n`;
+        // No statement code is generated for a const declaration block itself.
+        return ''; 
+    } else {
+        // Original logic for mutable variables (int, float, etc.)
+        if (isSetInSetup) {
+            if (!Blockly.Arduino.definitions_['var_' + varName]) {
+                Blockly.Arduino.definitions_['var_' + varName] = declaration;
+            }
+            if (parent && parent.type === 'arduino_loop') {
+                return `${varName} = ${value};\n`; // Re-assignment in loop
+            }
+            return ''; // Initial declaration was global
+        } else if (parent && parent.type === 'arduino_loop') {
+            return `${declaration}\n`; // Local declaration in loop
+        } else {
+            if (!Blockly.Arduino.definitions_['var_' + varName]) {
+                 Blockly.Arduino.definitions_['var_' + varName] = declaration;
+            }
+            return ''; // Global declaration (outside setup/loop or only in setup)
         }
-        // If in setup, do nothing (already initialized globally)
-        return '';
-    }
-    // If not set in setup, but set in loop, declare locally in loop
-    else if (parent && parent.type === 'arduino_loop') {
-        return `${declaration}\n`;
-    }
-    // If not in setup or loop, or in setup only, declare globally
-    else {
-        Blockly.Arduino.definitions_['var_' + varName] = declaration;
-        return '';
     }
 };
 
