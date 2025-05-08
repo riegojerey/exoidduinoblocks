@@ -121,9 +121,9 @@
     </div>
 
     <xml id="toolbox" style="display: none">
-        <category name="Structure" colour="180">
+        <category name="Setup" colour="180">
             <block type="arduino_setup">
-                <field name="SERIAL_RATE">9600</field>
+                <field name="BAUD_RATE">9600</field>
             </block>
             <sep gap="8"></sep>
             <label text="Pin Setup" web-class="toolbox-label"></label>
@@ -139,7 +139,32 @@
                 <field name="PIN">pin</field>
                 <field name="MODE">OUTPUT</field>
             </block>
+            <sep gap="8"></sep>
+            <label text="Serial Setup" web-class="toolbox-label"></label>
+            <block type="serial_setup"> 
+                <field name="BAUD">9600</field> 
+            </block>
+            <sep gap="8"></sep>
+            <label text="Motor Setup" web-class="toolbox-label"></label>
+            <block type="l298n_attach"></block>
+            <block type="servo_attach"></block>
+            <block type="stepper_setup_2pin"> 
+                <field name="STEPS">2048</field> 
+            </block>
+            <block type="stepper_setup_4pin"> 
+                <field name="STEPS">2048</field> 
+            </block>
+            <sep gap="8"></sep>
+            <label text="Sensor Setup" web-class="toolbox-label"></label>
+            <block type="encoder_init"></block>
+            <block type="sensor_ultrasonic_init">
+                <field name="SONAR_VAR">mySonar</field>
+                <field name="TRIG_PIN">3</field>
+                <field name="ECHO_PIN">4</field>
+                <field name="MAX_DIST">200</field>
+            </block>
             <sep gap="16"></sep>
+            <label text="Main Loop" web-class="toolbox-label"></label>
             <block type="arduino_loop">
                 <statement name="LOOP">
                     <block type="time_delay">
@@ -147,37 +172,23 @@
                     </block>
                 </statement>
             </block>
-            <sep gap="8"></sep>
-            <label text="Serial Setup" web-class="toolbox-label"></label>
-            <block type="serial_setup"> <field name="BAUD">9600</field> </block>
-            <sep gap="8"></sep>
-            <label text="Motor Setup" web-class="toolbox-label"></label>
-            <block type="l298n_attach"></block>
-            <block type="servo_attach"></block>
-            <block type="stepper_setup_2pin"> <field name="STEPS">2048</field> </block>
-            <block type="stepper_setup_4pin"> <field name="STEPS">2048</field> </block>
-            <sep gap="8"></sep>
-            <label text="Sensor Setup" web-class="toolbox-label"></label>
-            <block type="encoder_init"></block>
-            <block type="sensor_ultrasonic_init"></block>
-            <sep gap="16"></sep>
-            <label text="Timing" web-class="toolbox-label"></label>
-            <block type="time_delay">
-                <value name="DELAY_TIME_MILI">
+        </category>
+        <category name="Sensors" colour="40">
+            <block type="sensor_light_condition"> <field name="STATE">DARK</field> </block>
+            <block type="sensor_light_value"> </block>
+            <block type="sensor_potentiometer"> <field name="UNIT">VALUE</field> </block>
+            <label text="Ultrasonic Sensor" web-class="toolbox-label"></label>
+            <block type="sensor_ultrasonic_read"></block>
+            <block type="sensor_ultrasonic_max_distance"></block>
+            <label text="Encoder" web-class="toolbox-label"></label>
+            <block type="encoder_read"></block>
+            <block type="encoder_write">
+                <value name="VALUE">
                     <shadow type="math_number">
-                        <field name="NUM">1000</field>
+                        <field name="NUM">0</field>
                     </shadow>
                 </value>
             </block>
-            <block type="time_delaymicros">
-                <value name="DELAY_TIME_MICRO">
-                    <shadow type="math_number">
-                        <field name="NUM">100</field>
-                    </shadow>
-                </value>
-            </block>
-            <block type="time_millis"></block>
-            <block type="time_micros"></block>
         </category>
         <category name="Input/Output" colour="260">
             <label text="Digital States" web-class="toolbox-label"></label>
@@ -256,16 +267,6 @@
             <block type="io_analogread_var">
                 <field name="PIN">pin</field>
             </block>
-        </category>
-        <category name="Sensors" colour="40">
-            <block type="sensor_light_condition"> <field name="STATE">DARK</field> </block>
-            <block type="sensor_light_value"> </block>
-            <block type="sensor_potentiometer"> <field name="UNIT">VALUE</field> </block>
-            <label text="Ultrasonic Sensor" web-class="toolbox-label"></label>
-             <block type="sensor_ultrasonic_read"> <field name="UNIT">CM</field> </block>
-             <label text="Encoder" web-class="toolbox-label"></label>
-            <block type="encoder_read"></block>
-            <block type="encoder_write"> <value name="VALUE"> <shadow type="math_number"><field name="NUM">0</field></shadow> </value> </block>
         </category>
         <category name="Motors" colour="#FF6680">
              <label text="DC Motors (L298N)" web-class="toolbox-label"></label>
@@ -475,12 +476,11 @@
         }, true);
     </script>
 
-    <!-- App scripts -->
-    <script src="ipc_handler.js"></script>
+    <!-- App scripts - Load in correct order -->
+    <script src="app_sensor.js"></script>
     <script src="app_io.js"></script>
     <script src="app_motors.js"></script>
     <script src="app_pid.js"></script>
-    <script src="app_sensor.js"></script>
     <script src="app.js"></script>
 
     </body>

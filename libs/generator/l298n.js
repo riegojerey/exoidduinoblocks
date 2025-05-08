@@ -139,9 +139,19 @@ Blockly.Arduino['l298n_set_speed'] = function(block) {
 
         let pin_en = (motor === 'A') ? `${variable_l298n_var}_ENA` : `${variable_l298n_var}_ENB`;
 
-        // Add constrain function to ensure speed is within 0-255 range
-        return `  // Set Motor ${motor} Speed for ${userVariableName}\n` +
-               `  analogWrite(${pin_en}, constrain(${speed}, 0, 255));\n`;
+        // Only use constrain() if the speed is a variable or expression
+        // If it's a literal number, we can check at generation time
+        let speedValue = parseInt(speed);
+        if (!isNaN(speedValue)) {
+            // For literal numbers, we can validate at generation time
+            speedValue = Math.max(0, Math.min(255, speedValue));
+            return `  // Set Motor ${motor} Speed for ${userVariableName}\n` +
+                   `  analogWrite(${pin_en}, ${speedValue});\n`;
+        } else {
+            // For variables or expressions, we need runtime constraining
+            return `  // Set Motor ${motor} Speed for ${userVariableName}\n` +
+                   `  analogWrite(${pin_en}, constrain(${speed}, 0, 255));\n`;
+        }
     } catch (error) {
         return handleGeneratorError(block, error);
     }

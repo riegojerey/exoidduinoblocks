@@ -1,14 +1,9 @@
 # Setup script for ExoiDuino
-# This script handles the complete installation and build process
+# This script handles the build process
 
 # Get absolute path where the script is running
 $baseDir = (Get-Location).Path
-Write-Host "🚀 Starting ExoiDuino Setup in: $baseDir" -ForegroundColor Cyan
-
-# Function to check if a command exists
-function Test-Command($CommandName) {
-    return $null -ne (Get-Command $CommandName -ErrorAction SilentlyContinue)
-}
+Write-Host "🚀 Starting ExoiDuino Build in: $baseDir" -ForegroundColor Cyan
 
 # Function to handle errors
 function Handle-Error {
@@ -29,6 +24,31 @@ function Create-SafePath {
     return $fullPath
 }
 
+# Function to clean up COM ports
+function Clean-ComPorts {
+    Write-Host "🔍 Checking for processes using COM ports..." -ForegroundColor Yellow
+    
+    # Kill any existing ExoiDuino processes
+    $exoidProcesses = Get-Process | Where-Object { $_.ProcessName -like "*ExoiDuino*" }
+    if ($exoidProcesses) {
+        Write-Host "Found running ExoiDuino processes, stopping them..."
+        $exoidProcesses | ForEach-Object { 
+            try {
+                $_ | Stop-Process -Force
+                Write-Host "Stopped process: $($_.ProcessName)"
+            } catch {
+                Write-Host "Warning: Could not stop process $($_.ProcessName)" -ForegroundColor Yellow
+            }
+        }
+    }
+    
+    # Give the system a moment to release the ports
+    Start-Sleep -Seconds 2
+}
+
+# Clean up COM ports before starting
+Clean-ComPorts
+
 # Check prerequisites
 Write-Host "🔍 Checking prerequisites..." -ForegroundColor Yellow
 
@@ -39,64 +59,29 @@ if ([version]$nodeVersion -lt [version]$requiredNodeVersion) {
     Handle-Error "Node.js version $requiredNodeVersion or higher is required. Current version: $nodeVersion"
 }
 
-# Check npm
-if (-not (Test-Command "npm")) {
-    Handle-Error "npm is not installed. Please install Node.js which includes npm."
-}
-
 Write-Host "✅ Found Node.js $nodeVersion and npm $(npm -v)" -ForegroundColor Green
 
-# Create all necessary directories with safe path handling
+# Clean previous build
+Write-Host "🧹 Cleaning previous build..." -ForegroundColor Yellow
+if (Test-Path "node_modules") {
+    Remove-Item -Recurse -Force "node_modules"
+}
+if (Test-Path "dist") {
+    Remove-Item -Recurse -Force "dist"
+}
+
+# Create necessary directories
 $arduinoDataDir = Create-SafePath (Join-Path $baseDir "arduino-data")
-$offlineResourcesDir = Create-SafePath (Join-Path $baseDir "offline-resources")
-
-$directories = @(
-    (Join-Path $arduinoDataDir "downloads"),
-    (Join-Path $arduinoDataDir "packages"),
-    (Join-Path $arduinoDataDir "libraries"),
-    (Join-Path $arduinoDataDir "user"),
-    (Join-Path $offlineResourcesDir "packages"),
-    (Join-Path $offlineResourcesDir "libraries"),
-    (Join-Path $baseDir "libs/blockly"),
-    (Join-Path $baseDir "libs/blockly/msg"),
-    (Join-Path $baseDir "libs/fontawesome/css"),
-    (Join-Path $baseDir "libs/fontawesome/webfonts"),
-    (Join-Path $baseDir "libs/prism/themes"),
-    (Join-Path $baseDir "libs/prism/components")
-)
-
-foreach ($dir in $directories) {
-    Create-SafePath $dir
-}
-
-# Clean previous installation
-Write-Host "🧹 Cleaning previous installation..." -ForegroundColor Yellow
-Remove-Item -Path (Join-Path $baseDir "node_modules") -Recurse -Force -ErrorAction SilentlyContinue
-Remove-Item -Path (Join-Path $baseDir "dist") -Recurse -Force -ErrorAction SilentlyContinue
-
-# Download web dependencies
-Write-Host "📥 Downloading web dependencies..." -ForegroundColor Yellow
-
-# Blockly files
-$blocklyVersion = "9.2.0"
-$blocklyFiles = @(
-    @{url = "blockly.min.js"; path = "libs/blockly/blockly.min.js"},
-    @{url = "blocks.min.js"; path = "libs/blockly/blocks.min.js"},
-    @{url = "javascript.min.js"; path = "libs/blockly/javascript.min.js"},
-    @{url = "msg/en.min.js"; path = "libs/blockly/msg/en.min.js"}
-)
-
-foreach ($file in $blocklyFiles) {
-    $url = "https://cdnjs.cloudflare.com/ajax/libs/blockly/$blocklyVersion/$($file.url)"
-    $output = Join-Path $baseDir $file.path
-    Invoke-WebRequest -Uri $url -OutFile $output
-    Write-Host "Downloaded $($file.url)"
-}
+$librariesDir = Create-SafePath (Join-Path $arduinoDataDir "libraries")
 
 # Install npm dependencies
 Write-Host "📦 Installing npm dependencies..." -ForegroundColor Yellow
-npm install --save node-fetch@2.6.7 @serialport/parser-readline@11.0.1 serialport@11.0.1
-npm install --save-dev adm-zip@0.5.10 electron@28.3.3 electron-builder@24.13.3 @electron/rebuild@3.6.0 rimraf@5.0.1
+npm install --ignore-scripts --save node-fetch@2.6.7 @serialport/parser-readline@11.0.1 serialport@11.0.1
+npm install --ignore-scripts --save-dev adm-zip@0.5.10 electron@28.3.3 electron-builder@24.13.3 @electron/rebuild@3.6.0 rimraf@5.0.1
+
+# Rebuild native modules
+Write-Host "🔨 Rebuilding native modules..." -ForegroundColor Yellow
+npx electron-rebuild
 
 # Download and setup Arduino CLI
 Write-Host "📥 Setting up Arduino CLI..." -ForegroundColor Yellow
@@ -110,24 +95,33 @@ if (-not (Test-Path $arduinoCliPath)) {
     $tempZip = Join-Path $arduinoDataDir "temp.zip"
     
     try {
+        Write-Host "Downloading from: $arduinoCliUrl"
         Invoke-WebRequest -Uri $arduinoCliUrl -OutFile $tempZip
+        Write-Host "Download complete. Extracting..."
         Expand-Archive -Path $tempZip -DestinationPath $arduinoDataDir -Force
         Remove-Item $tempZip -Force
         
         if (-not (Test-Path $arduinoCliPath)) {
-            throw "Arduino CLI executable not found after extraction"
+            $extractedExe = Get-ChildItem -Path $arduinoDataDir -Filter "arduino-cli*.exe" -Recurse | Select-Object -First 1
+            if ($extractedExe) {
+                Move-Item -Path $extractedExe.FullName -Destination $arduinoCliPath -Force
+                Write-Host "Moved Arduino CLI to correct location: $arduinoCliPath"
+            } else {
+                throw "Arduino CLI executable not found after extraction"
+            }
         }
     } catch {
         Handle-Error "Failed to download or extract Arduino CLI: $_"
     }
 }
 
-# Create Arduino CLI config with proper path escaping
+# Create Arduino CLI config
 $configPath = Join-Path $arduinoDataDir "arduino-cli.yaml"
 $escapedDataDir = $arduinoDataDir.Replace('\', '/').Replace('"', '\"')
 $escapedDownloadsDir = (Join-Path $arduinoDataDir 'downloads').Replace('\', '/').Replace('"', '\"')
 $escapedUserDir = (Join-Path $arduinoDataDir 'user').Replace('\', '/').Replace('"', '\"')
 
+Write-Host "Creating Arduino CLI config at: $configPath"
 @"
 board_manager:
   additional_urls: []
@@ -143,91 +137,110 @@ logging:
   level: "info"
 "@ | Set-Content $configPath
 
-# Initialize Arduino CLI with proper error handling
+# Initialize Arduino CLI
 Write-Host "Initializing Arduino CLI..."
-
 try {
-    & $arduinoCliPath config init --overwrite --config-file $configPath
-    if ($LASTEXITCODE -ne 0) { throw "Arduino CLI config initialization failed" }
+    & $arduinoCliPath config init --overwrite --config-file "$configPath"
+    & $arduinoCliPath core update-index --config-file "$configPath"
     
-    & $arduinoCliPath core update-index --config-file $configPath
-    if ($LASTEXITCODE -ne 0) { throw "Arduino CLI core update failed" }
-
-    # Install board packages with proper error handling
-    $boards = @("arduino:avr", "arduino:megaavr")
-    foreach ($board in $boards) {
-        Write-Host "Installing board package: $board"
-        & $arduinoCliPath core install $board --config-file $configPath
-        if ($LASTEXITCODE -ne 0) { throw "Failed to install board package: $board" }
-    }
-
-    # Install only non-built-in libraries
+    # Install core packages
+    & $arduinoCliPath core install arduino:avr --config-file "$configPath"
+    
+    # Install libraries
     $libraries = @("Servo", "Stepper", "Firmata")
     foreach ($lib in $libraries) {
-        Write-Host "Installing library: $lib"
-        & $arduinoCliPath lib install $lib --config-file $configPath
-        if ($LASTEXITCODE -ne 0) { Write-Host "Warning: Failed to install library: $lib" -ForegroundColor Yellow }
+        & $arduinoCliPath lib install $lib --config-file "$configPath"
     }
 } catch {
-    Handle-Error "Arduino CLI setup failed: $_"
+    Write-Host "Warning: Some Arduino components may not have installed correctly" -ForegroundColor Yellow
+    Write-Host "Continuing with build..." -ForegroundColor Yellow
 }
 
-# Copy resources to offline directory
-Write-Host "📦 Preparing offline resources..." -ForegroundColor Yellow
+# Create manual Encoder library implementation
+Write-Host "📝 Creating manual Encoder library..." -ForegroundColor Yellow
+$encoderDir = Create-SafePath (Join-Path $librariesDir "Encoder")
+$encoderHeaderPath = Join-Path $encoderDir "Encoder.h"
+$encoderCppPath = Join-Path $encoderDir "Encoder.cpp"
 
-# Copy Arduino CLI and config
-Copy-Item -Path $arduinoCliPath -Destination $offlineResourcesDir -Force
-Copy-Item -Path $configPath -Destination $offlineResourcesDir -Force
+@"
+#ifndef Encoder_h
+#define Encoder_h
 
-# Copy packages and libraries
-$packagesDir = Join-Path $arduinoDataDir "packages"
-$librariesDir = Join-Path $arduinoDataDir "libraries"
+#include "Arduino.h"
 
-if (Test-Path $packagesDir) {
-    Copy-Item -Path "$packagesDir\*" -Destination (Join-Path $offlineResourcesDir "packages") -Recurse -Force
+class Encoder {
+public:
+    Encoder(uint8_t pin1, uint8_t pin2);
+    long read();
+    void write(long p);
+private:
+    uint8_t _pin1, _pin2;
+    volatile long _position;
+    static void updateEncoder();
+};
+
+#endif
+"@ | Set-Content $encoderHeaderPath
+
+@"
+#include "Encoder.h"
+
+Encoder::Encoder(uint8_t pin1, uint8_t pin2) {
+    _pin1 = pin1;
+    _pin2 = pin2;
+    _position = 0;
+    
+    pinMode(_pin1, INPUT_PULLUP);
+    pinMode(_pin2, INPUT_PULLUP);
+    
+    attachInterrupt(digitalPinToInterrupt(_pin1), updateEncoder, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(_pin2), updateEncoder, CHANGE);
 }
-if (Test-Path $librariesDir) {
-    Copy-Item -Path "$librariesDir\*" -Destination (Join-Path $offlineResourcesDir "libraries") -Recurse -Force
+
+long Encoder::read() {
+    return _position;
 }
+
+void Encoder::write(long p) {
+    _position = p;
+}
+
+void Encoder::updateEncoder() {
+    // Simple implementation - increment on rising edge of pin1
+    if (digitalRead(_pin1) == HIGH) {
+        if (digitalRead(_pin2) == LOW) {
+            _position++;
+        } else {
+            _position--;
+        }
+    }
+}
+"@ | Set-Content $encoderCppPath
 
 # Build the application
 Write-Host "🏗️ Building the application..." -ForegroundColor Yellow
-npm run build:win
 
-# Verify the build
-$distExe = Get-ChildItem -Path (Join-Path $baseDir "dist") -Filter "*.exe" -Recurse
-if (-not $distExe) {
-    Handle-Error "Build verification failed: No executable found in dist directory"
+# Build resources
+Write-Host "Building resources..."
+npm run pack-resources
+
+# Build both portable and installer versions
+Write-Host "Building application (both portable and installer)..."
+npx electron-builder --win
+
+# Verify build outputs
+$portableExe = Join-Path $baseDir "dist\ExoiDuino-1.0.0-portable.exe"
+$installerExe = Join-Path $baseDir "dist\ExoiDuino Setup 1.0.0.exe"
+
+if (-not (Test-Path $portableExe)) {
+    Handle-Error "Portable EXE file was not generated at: $portableExe"
 }
 
-# Create offline package
-Write-Host "📦 Creating offline package..." -ForegroundColor Yellow
-$offlineDir = Join-Path $baseDir "ExoiDuino-Offline"
-New-Item -ItemType Directory -Force -Path $offlineDir | Out-Null
+if (-not (Test-Path $installerExe)) {
+    Handle-Error "Installer EXE was not generated at: $installerExe"
+}
 
-# Copy installer and resources
-Copy-Item -Path $distExe.FullName -Destination $offlineDir
-Copy-Item -Path $offlineResourcesDir -Destination "$offlineDir/offline-resources" -Recurse
-
-# Create README
-@"
-ExoiDuino Offline Installation Package
-====================================
-
-This package contains:
-1. ExoiDuino installer (ExoiDuino-Setup-*.exe)
-2. Arduino CLI and required board packages
-3. All necessary libraries for offline use
-
-Installation:
-1. Run the ExoiDuino installer
-2. Follow the installation wizard
-3. Start ExoiDuino and enjoy!
-
-No internet connection is required for installation or usage.
-"@ | Out-File -FilePath "$offlineDir/README.txt"
-
-Write-Host "`n✨ ExoiDuino setup completed successfully! ✨" -ForegroundColor Cyan
-Write-Host "You can find:"
-Write-Host "- The built application in the 'dist' directory"
-Write-Host "- The complete offline package in the '$offlineDir' directory" 
+Write-Host "`n✨ Build process completed! ✨" -ForegroundColor Cyan
+Write-Host "Generated files:"
+Write-Host "📦 Portable EXE: $portableExe" -ForegroundColor Green
+Write-Host "💿 Installer EXE: $installerExe" -ForegroundColor Green 

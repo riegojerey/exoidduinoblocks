@@ -7,9 +7,10 @@
     "start": "electron .",
     "build": "pwsh setup.ps1",
     "build:win": "pwsh setup.ps1",
-    "rebuild": "@electron/rebuild",
+    "rebuild": "electron-rebuild",
     "pack-resources": "node electron/scripts/pack-resources.js",
-    "clean": "rimraf node_modules arduino-data dist offline-resources"
+    "clean": "rimraf node_modules arduino-data dist offline-resources",
+    "postinstall": "electron-builder install-app-deps"
   },
   "author": "Exoid Robotics",
   "license": "MIT",
@@ -17,15 +18,16 @@
     "node": ">=16.0.0"
   },
   "dependencies": {
-    "node-fetch": "^2.6.7",
     "@serialport/parser-readline": "^11.0.1",
+    "electron-log": "^5.4.0",
+    "node-fetch": "^2.6.7",
     "serialport": "^11.0.1"
   },
   "devDependencies": {
+    "@electron/rebuild": "^3.6.0",
     "adm-zip": "^0.5.10",
     "electron": "^28.3.3",
     "electron-builder": "^24.13.3",
-    "@electron/rebuild": "^3.6.0",
     "rimraf": "^5.0.1"
   },
   "build": {
@@ -42,42 +44,23 @@
       "app.js",
       "app_*.js",
       "libs/**/*",
-      "package.json"
-    ],
-    "extraResources": [
+      "package.json",
       {
         "from": "arduino-data",
-        "to": "arduino-data",
+        "to": "resources/arduino-data",
         "filter": [
-          "**/*",
           "arduino-cli.exe",
-          "arduino-cli",
+          "arduino-cli.yaml",
           "boards/**/*",
           "libraries/**/*",
           "packages/**/*"
-        ]
-      },
-      {
-        "from": "offline-resources",
-        "to": "offline-resources",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
-        "from": "libs",
-        "to": "libs",
-        "filter": [
-          "**/*"
         ]
       }
     ],
     "win": {
       "target": [
-        {
-          "target": "nsis",
-          "arch": ["x64"]
-        }
+        "nsis",
+        "portable"
       ],
       "icon": "electron/icons/icon.ico"
     },
@@ -88,11 +71,15 @@
       "createStartMenuShortcut": true,
       "installerIcon": "electron/icons/icon.ico",
       "uninstallerIcon": "electron/icons/icon.ico",
-      "artifactName": "${productName}-Setup-${version}.${ext}"
+      "artifactName": "${productName} Setup ${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.${ext}"
     },
     "asar": true,
     "asarUnpack": [
-      "arduino-data/**/*"
+      "node_modules/@serialport/**/*",
+      "resources/arduino-data/**/*"
     ]
   }
 }
