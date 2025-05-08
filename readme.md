@@ -1,27 +1,51 @@
 # ExoiDuino by Exoid Robotics
 
-ExoiDuino is a block-based programming environment designed to make learning and programming Arduino boards easier and more accessible. It utilizes the Blockly library for a visual coding experience and integrates the Arduino CLI to allow compiling and uploading code directly to connected boards.
+ExoiDuino is a block-based programming environment designed to make learning and programming Arduino boards easier and more accessible. It utilizes the Blockly library for a visual coding experience and integrates the Arduino CLI to allow compiling and uploading code directly to connected boards (in the Desktop version).
 
-A key feature of ExoiDuino is its ability to function **offline**. The build process bundles the necessary Arduino CLI, board cores (AVR), and required libraries, allowing users without consistent internet access to develop and upload Arduino sketches.
+## Versions / Deployment
 
-## Features
+There are two ways to use ExoiDuino:
 
-*   Visual block-based programming using Blockly.
-*   Generates Arduino C++ code.
-*   Offline compilation and uploading via bundled Arduino CLI.
-*   Bundles required Arduino cores (AVR for Uno/Nano/Mega) and libraries (Servo, Stepper, NewPing, PID, etc.).
-*   Board and Port detection.
-*   Export generated code as `.ino` files.
+### 1. Web Application (Live Demo / Code Generation)
 
-## Prerequisites
+*   **Access:** Runs directly in modern web browsers.
+*   **Host:** Typically hosted via GitHub Pages (replace with your actual link if available: `https://riegojerey.github.io/exoidduinoblocks/`).
+*   **Features:** Visual block programming, real-time Arduino C++ code generation, workspace saving (local storage), code export (`.ino`).
+*   **Limitations:** Due to browser security restrictions, the web version **CANNOT** directly compile or upload code to an Arduino board. It can connect to a port via Web Serial (if supported by the browser) but primarily serves as a code generation tool.
+*   **Workflow:** Create your program using blocks, copy the generated C++ code, and paste it into the Arduino IDE or use it with an external Arduino CLI installation to compile and upload.
 
-Before you begin, ensure you have the following installed:
+### 2. Desktop Application (Offline Build & Upload)
+
+*   **Access:** Downloadable `.exe` application for Windows (built using Electron).
+*   **Features:** Includes all Web App features PLUS:
+    *   **Offline Compilation & Upload:** Bundles the Arduino CLI, AVR board cores, and necessary libraries.
+    *   Directly compiles and uploads code to connected Arduino Uno/Nano/Mega boards without needing an external IDE or internet connection.
+    *   Port detection using system serial port access.
+*   **Target User:** Ideal for users who need a self-contained, offline tool for programming Arduinos, such as in educational settings or areas with limited internet.
+
+---
+
+## Using the Web Application
+
+1.  **Access:** Open the GitHub Pages link (if available) OR clone this repository (`git clone <your-repo-url>`) and open the `index.html` file directly in your browser.
+2.  **Browser Requirement:** Requires a modern browser supporting the Web Serial API (e.g., Google Chrome, Microsoft Edge) for any serial port interaction features.
+3.  **Generate Code:** Use the Blockly interface to create your program.
+4.  **Copy Code:** Copy the generated Arduino C++ code from the code preview pane.
+5.  **Compile/Upload:** Paste the code into the Arduino IDE or use an external Arduino CLI installation to compile and upload to your board.
+
+---
+
+## Developing and Building the Desktop Application
+
+These instructions are for developers who want to run the Electron version locally or build the distributable `.exe`.
+
+### Prerequisites
 
 *   **Node.js:** Version 16.0.0 or higher (includes npm). Download from [nodejs.org](https://nodejs.org/).
 *   **Git:** For cloning the repository. Download from [git-scm.com](https://git-scm.com/).
 *   **PowerShell:** Included with modern Windows versions. Needed to run the setup/build script.
 
-## Setup for Development
+### Setup for Development
 
 1.  **Clone the repository:**
     ```bash
@@ -30,49 +54,49 @@ Before you begin, ensure you have the following installed:
     ```
 
 2.  **Run the Setup Script:**
-    This script handles installing Node.js dependencies, rebuilding native modules, and setting up the necessary Arduino CLI environment within the `arduino-data` directory. This setup is required even for development, as the application uses the bundled CLI environment.
+    This script installs Node.js dependencies, rebuilds native modules, downloads the Arduino CLI, and installs the necessary board cores and libraries into the local `arduino-data` directory. This environment is used for both development and building.
 
-    Open PowerShell **as Administrator** (required for potential `electron-rebuild` steps or if execution policy is restricted) and run:
+    Open PowerShell **as Administrator** (recommended) and run:
     ```powershell
+    # Navigate to the project directory first if you haven't already
     pwsh -ExecutionPolicy Bypass -File .\setup.ps1
     ```
-    *   _Note:_ The first time you run this, it might take a while as it downloads the Arduino CLI and board cores/libraries.
-    *   _Troubleshooting:_ If you encounter PowerShell script execution errors, you might need to adjust your system's execution policy. Running as Administrator with `-ExecutionPolicy Bypass` for this specific script is generally safe for development purposes.
+    *   _Note:_ The first run might take time to download components.
+    *   _Troubleshooting:_ If errors occur, ensure prerequisites are met. Adjust PowerShell execution policy if needed (Bypass is usually fine for development).
 
-## Running Locally (Development Mode)
+### Running Locally (Development Mode)
 
-Once the setup script has completed successfully, you can start the application in development mode:
+After the setup script completes successfully:
 
 ```bash
 npm start
 ```
 
-This will launch the Electron application, and you should have access to developer tools.
+This launches the Electron application locally with developer tools enabled.
 
-## Building for Distribution
+### Building the `.exe` for Distribution
 
-To create the distributable `.exe` files (installer and portable version) designed for offline use:
+To create the offline-capable `.exe` files:
 
-1.  **Ensure Setup is Complete:** Make sure you have successfully run the `pwsh ./setup.ps1` script at least once.
+1.  **Ensure Setup is Complete:** Run `pwsh ./setup.ps1` successfully at least once.
 2.  **Run the Build Command:**
     ```bash
     npm run build
     ```
 
-*   This command executes the `setup.ps1` script again, ensuring all components (CLI, cores, libraries) are correctly prepared in the `arduino-data` directory before packaging.
-*   `electron-builder` will then package the application.
-*   The output (`.exe` installer and portable `.exe`) will be located in the `dist/` directory.
+*   This re-runs `setup.ps1` to ensure the bundled environment is up-to-date and then uses `electron-builder` to package the application.
+*   Output (`.exe` installer and portable `.exe`) will be in the `dist/` directory.
 
-## Offline Functionality
+---
 
-The `npm run build` process bundles:
+## Features Summary
 
-*   The Arduino CLI executable.
-*   A pre-configured `arduino-cli.yaml` using relative paths.
-*   The Arduino AVR core files (for Uno, Nano, Mega compatibility).
-*   Required libraries (Servo, Stepper, NewPing, PID, Firmata, Encoder) within the `arduino-data` directory structure.
-
-This allows the final `.exe` application to detect ports, compile sketches using the bundled libraries/cores, and upload to Arduino boards without requiring an internet connection on the end-user's machine.
+*   Visual block-based programming (Blockly)
+*   Arduino C++ code generation
+*   Board/Port detection (Desktop App)
+*   Offline code compilation and upload (Desktop App)
+*   Bundled Arduino CLI, AVR Cores, standard libraries (Desktop App)
+*   Code export to `.ino`
 
 ## License
 
@@ -81,7 +105,7 @@ This project is licensed under the MIT License - see the `LICENSE` file (if avai
 ## Support
 
 For support, please:
-- Open an issue on GitHub
+- Open an issue on the GitHub repository
 - Visit [Exoid Robotics](https://www.exoidrobotics.com)
 - Contact us through our social media channels
 
