@@ -117,20 +117,17 @@ if (-not (Test-Path $arduinoCliPath)) {
 
 # Create Arduino CLI config
 $configPath = Join-Path $arduinoDataDir "arduino-cli.yaml"
-$escapedDataDir = $arduinoDataDir.Replace('\', '/').Replace('"', '\"')
-$escapedDownloadsDir = (Join-Path $arduinoDataDir 'downloads').Replace('\', '/').Replace('"', '\"')
-$escapedUserDir = (Join-Path $arduinoDataDir 'user').Replace('\', '/').Replace('"', '\"')
 
-Write-Host "Creating Arduino CLI config at: $configPath"
+Write-Host "Creating Arduino CLI config at: $configPath with relative paths for offline use."
 @"
 board_manager:
-  additional_urls: []
+  additional_urls: [] # Keep this empty for a fully offline build, or pre-fill if you have specific local package indexes
 daemon:
   port: "50051"
 directories:
-  data: "$escapedDataDir"
-  downloads: "$escapedDownloadsDir"
-  user: "$escapedUserDir"
+  data: "."      # Paths are relative to this YAML file's location
+  downloads: "./downloads" 
+  user: "."      # Sketchbook / libraries path relative to this YAML file
 logging:
   file: ""
   format: "text"
@@ -138,22 +135,27 @@ logging:
 "@ | Set-Content $configPath
 
 # Initialize Arduino CLI
-Write-Host "Initializing Arduino CLI..."
+Write-Host "Initializing Arduino CLI (core update and AVR core install)..."
 try {
-    & $arduinoCliPath config init --overwrite --config-file "$configPath"
+    & $arduinoCliPath config init --overwrite --config-file "$configPath" # Should re-read the new relative config
     & $arduinoCliPath core update-index --config-file "$configPath"
     
-    # Install core packages
+    # Install core packages - Essential for offline compilation
+    Write-Host "Installing arduino:avr core..."
     & $arduinoCliPath core install arduino:avr --config-file "$configPath"
     
-    # Install libraries
-    $libraries = @("Servo", "Stepper", "Firmata")
-    foreach ($lib in $libraries) {
+    # Install required libraries using the CLI - will go into arduino-data/libraries/
+    Write-Host "Installing required Arduino libraries..."
+    $requiredLibraries = @("Servo", "Stepper", "Firmata", "NewPing", "PID")
+    foreach ($lib in $requiredLibraries) {
+        Write-Host "Installing library: $lib"
         & $arduinoCliPath lib install $lib --config-file "$configPath"
     }
+    Write-Host "Required libraries installation step completed."
+    
 } catch {
-    Write-Host "Warning: Some Arduino components may not have installed correctly" -ForegroundColor Yellow
-    Write-Host "Continuing with build..." -ForegroundColor Yellow
+    # If core or library install fails, this is critical for an offline app
+    Handle-Error "Failed during Arduino CLI core or library setup: $_"
 }
 
 # Create manual Encoder library implementation
@@ -220,9 +222,9 @@ void Encoder::updateEncoder() {
 # Build the application
 Write-Host "🏗️ Building the application..." -ForegroundColor Yellow
 
-# Build resources
-Write-Host "Building resources..."
-npm run pack-resources
+# Build resources (Removed - Handled by electron-builder files config)
+# Write-Host "Building resources..."
+# npm run pack-resources 
 
 # Build both portable and installer versions
 Write-Host "Building application (both portable and installer)..."

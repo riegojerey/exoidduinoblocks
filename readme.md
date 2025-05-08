@@ -1,102 +1,82 @@
-# ExoiDuino
+# ExoiDuino by Exoid Robotics
 
-ExoiDuino is a block-based programming environment for Arduino, developed by Exoid Robotics. It provides an intuitive interface for programming Arduino boards using a visual block-based approach.
+ExoiDuino is a block-based programming environment designed to make learning and programming Arduino boards easier and more accessible. It utilizes the Blockly library for a visual coding experience and integrates the Arduino CLI to allow compiling and uploading code directly to connected boards.
 
-## Quick Start
+A key feature of ExoiDuino is its ability to function **offline**. The build process bundles the necessary Arduino CLI, board cores (AVR), and required libraries, allowing users without consistent internet access to develop and upload Arduino sketches.
 
-### Prerequisites
+## Features
 
-Before running the setup, make sure you have:
-- [Node.js](https://nodejs.org/) (v16 or higher)
-- [Git](https://git-scm.com/)
-- PowerShell (comes with Windows)
+*   Visual block-based programming using Blockly.
+*   Generates Arduino C++ code.
+*   Offline compilation and uploading via bundled Arduino CLI.
+*   Bundles required Arduino cores (AVR for Uno/Nano/Mega) and libraries (Servo, Stepper, NewPing, PID, etc.).
+*   Board and Port detection.
+*   Export generated code as `.ino` files.
 
-### One-Click Setup
+## Prerequisites
 
-1. Clone the repository:
-   ```powershell
-   git clone https://github.com/ExoidRoboticsPH/exoidduinoblocks.git
-   cd exoidduinoblocks
-   ```
+Before you begin, ensure you have the following installed:
 
-2. Run the setup script:
-   ```powershell
-   .\setup.ps1
-   ```
+*   **Node.js:** Version 16.0.0 or higher (includes npm). Download from [nodejs.org](https://nodejs.org/).
+*   **Git:** For cloning the repository. Download from [git-scm.com](https://git-scm.com/).
+*   **PowerShell:** Included with modern Windows versions. Needed to run the setup/build script.
 
-That's it! The script will:
-- Check for prerequisites
-- Install all dependencies
-- Set up Arduino CLI
-- Build the application
+## Setup for Development
 
-### Manual Setup
+1.  **Clone the repository:**
+    ```bash
+    git clone <your-repository-url>
+    cd exoidduinoblocks
+    ```
 
-If you prefer to run the commands manually or if you're not using Windows, follow these steps:
+2.  **Run the Setup Script:**
+    This script handles installing Node.js dependencies, rebuilding native modules, and setting up the necessary Arduino CLI environment within the `arduino-data` directory. This setup is required even for development, as the application uses the bundled CLI environment.
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
+    Open PowerShell **as Administrator** (required for potential `electron-rebuild` steps or if execution policy is restricted) and run:
+    ```powershell
+    pwsh -ExecutionPolicy Bypass -File .\setup.ps1
+    ```
+    *   _Note:_ The first time you run this, it might take a while as it downloads the Arduino CLI and board cores/libraries.
+    *   _Troubleshooting:_ If you encounter PowerShell script execution errors, you might need to adjust your system's execution policy. Running as Administrator with `-ExecutionPolicy Bypass` for this specific script is generally safe for development purposes.
 
-2. Setup Arduino CLI:
-   ```bash
-   npm run setup-arduino
-   ```
+## Running Locally (Development Mode)
 
-3. Build the application:
-   ```bash
-   npm run build:win  # For Windows
-   # or
-   npm run build     # For other platforms
-   ```
+Once the setup script has completed successfully, you can start the application in development mode:
 
-## Development
-
-To run the application in development mode:
 ```bash
 npm start
 ```
 
-## Troubleshooting
+This will launch the Electron application, and you should have access to developer tools.
 
-If you encounter any issues during setup:
+## Building for Distribution
 
-1. **Windows Build Tools Error**:
-   ```powershell
-   npm config set msvs_version 2019
-   npm config set python python2.7
-   npm install --global windows-build-tools
-   ```
+To create the distributable `.exe` files (installer and portable version) designed for offline use:
 
-2. **Serialport Build Error**:
-   ```powershell
-   npm install --save serialport --build-from-source
-   ```
+1.  **Ensure Setup is Complete:** Make sure you have successfully run the `pwsh ./setup.ps1` script at least once.
+2.  **Run the Build Command:**
+    ```bash
+    npm run build
+    ```
 
-3. **Clean Installation**:
-   ```powershell
-   npm run clean
-   ```
+*   This command executes the `setup.ps1` script again, ensuring all components (CLI, cores, libraries) are correctly prepared in the `arduino-data` directory before packaging.
+*   `electron-builder` will then package the application.
+*   The output (`.exe` installer and portable `.exe`) will be located in the `dist/` directory.
 
-## Features
+## Offline Functionality
 
-- Block-based programming interface
-- Support for various Arduino boards (Uno, Nano, Mega)
-- Built-in blocks for:
-  - Digital/Analog I/O
-  - Serial Communication
-  - Motor Control (DC, Servo, Stepper)
-  - Sensors (Ultrasonic, Light, Encoder)
-  - PID Control
-- Code export functionality
-- Real-time code preview
-- Arduino code generation
-- Direct upload to Arduino boards
+The `npm run build` process bundles:
+
+*   The Arduino CLI executable.
+*   A pre-configured `arduino-cli.yaml` using relative paths.
+*   The Arduino AVR core files (for Uno, Nano, Mega compatibility).
+*   Required libraries (Servo, Stepper, NewPing, PID, Firmata, Encoder) within the `arduino-data` directory structure.
+
+This allows the final `.exe` application to detect ports, compile sketches using the bundled libraries/cores, and upload to Arduino boards without requiring an internet connection on the end-user's machine.
 
 ## License
 
-MIT License - see LICENSE file for details.
+This project is licensed under the MIT License - see the `LICENSE` file (if available) or `package.json` for details.
 
 ## Support
 

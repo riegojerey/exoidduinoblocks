@@ -8,8 +8,7 @@
     "build": "pwsh setup.ps1",
     "build:win": "pwsh setup.ps1",
     "rebuild": "electron-rebuild",
-    "pack-resources": "node electron/scripts/pack-resources.js",
-    "clean": "rimraf node_modules arduino-data dist offline-resources",
+    "clean": "rimraf node_modules dist",
     "postinstall": "electron-builder install-app-deps"
   },
   "author": "Exoid Robotics",
@@ -62,15 +61,15 @@
         "nsis",
         "portable"
       ],
-      "icon": "electron/icons/icon.ico"
+      "icon": "electron/icons/Icon.ico"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "installerIcon": "electron/icons/icon.ico",
-      "uninstallerIcon": "electron/icons/icon.ico",
+      "installerIcon": "electron/icons/Icon.ico",
+      "uninstallerIcon": "electron/icons/Icon.ico",
       "artifactName": "${productName} Setup ${version}.${ext}"
     },
     "portable": {

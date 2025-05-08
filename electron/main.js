@@ -22,64 +22,28 @@ log.errorHandler.startCatching();
 
 log.info('App starting...');
 
-const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+const isDev = !app.isPackaged;
 const USER_DATA_DIR = app.getPath('userData');
 log.info(`User data directory: ${USER_DATA_DIR}`);
 
-// Update resource paths for production
-const RESOURCE_PATH = isDev ? path.join(__dirname, '..') : path.join(app.getAppPath(), 'resources');
-const ARDUINO_DATA_DIR = isDev ? 
-    path.join(__dirname, '..', 'arduino-data') : 
-    path.join(RESOURCE_PATH, 'arduino-data');
+// --- Corrected Resource Path Calculation ---
+// In development, resources are relative to project root.
+// In production (packaged), resources are in process.resourcesPath.
+const RESOURCES_DIR = app.isPackaged ? process.resourcesPath : path.join(__dirname, '..');
+
+// Arduino CLI and data are expected inside the resources directory in production
+const ARDUINO_DATA_DIR = path.join(RESOURCES_DIR, 'arduino-data');
 const ARDUINO_CLI_PATH = path.join(ARDUINO_DATA_DIR, process.platform === 'win32' ? 'arduino-cli.exe' : 'arduino-cli');
 const ARDUINO_CONFIG_PATH = path.join(ARDUINO_DATA_DIR, 'arduino-cli.yaml');
 const TEMP_SKETCH_DIR = path.join(os.tmpdir(), 'ExoiDuinoSketch');
 
-// Log paths specifically in production
-if (!isDev) {
-    log.info('-- Production Paths --');
-    log.info(`App Path: ${app.getAppPath()}`);
-    log.info(`RESOURCE_PATH: ${RESOURCE_PATH}`);
-    log.info(`USER_DATA_DIR: ${USER_DATA_DIR}`);
-    log.info(`ARDUINO_DATA_DIR: ${ARDUINO_DATA_DIR}`);
-    log.info(`ARDUINO_CLI_PATH: ${ARDUINO_CLI_PATH}`);
-    log.info('---------------------');
-}
-
-// First launch setup for production
-async function setupProductionEnvironment() {
-    try {
-        // Define working directory in user's AppData
-        const workingDir = path.join(USER_DATA_DIR, 'arduino-work');
-        const localCliPath = path.join(workingDir, process.platform === 'win32' ? 'arduino-cli.exe' : 'arduino-cli');
-        const configPath = path.join(workingDir, 'arduino-cli.yaml');
-        
-        // Check if the environment was already set up by our setup script
-        if (!fs.existsSync(workingDir) || !fs.existsSync(localCliPath) || !fs.existsSync(configPath)) {
-            log.error('Arduino CLI environment not properly set up. Please run setup-arduino-cli.js first.');
-            throw new Error('Arduino environment not set up. Please run setup-arduino-cli.js first.');
-        }
-        
-        log.info('Found existing Arduino CLI environment:', { 
-            workDir: workingDir, 
-            cliPath: localCliPath, 
-            configPath: configPath 
-        });
-        
-        // Update global paths to use working directory
-        global.ARDUINO_WORK_DIR = workingDir;
-        global.ARDUINO_CONFIG_PATH = configPath;
-        global.ARDUINO_CLI_PATH = localCliPath;
-        global.setupComplete = true;
-        
-        log.info('Using existing Arduino CLI environment. Setup complete.');
-        return true;
-    } catch (err) {
-        log.error('Error during setup:', err);
-        global.setupComplete = false;
-        throw err;
-    }
-}
+log.info('-- Resource Paths --');
+log.info(`isDev: ${isDev}`);
+log.info(`RESOURCES_DIR: ${RESOURCES_DIR}`);
+log.info(`ARDUINO_DATA_DIR: ${ARDUINO_DATA_DIR}`);
+log.info(`ARDUINO_CLI_PATH: ${ARDUINO_CLI_PATH}`);
+log.info(`ARDUINO_CONFIG_PATH: ${ARDUINO_CONFIG_PATH}`);
+log.info('---------------------');
 
 // Helper function to copy directories recursively
 function copyDirectory(source, target) {
@@ -100,40 +64,35 @@ function copyDirectory(source, target) {
     });
 }
 
-// Update checkArduinoCLI to use the local copy if available
+// Update checkArduinoCLI to use the directly calculated paths
 function checkArduinoCLI() {
-    // Log globals here too
-    log.info('checkArduinoCLI using globals:', { 
-        cliPath: global.ARDUINO_CLI_PATH, 
-        configPath: global.ARDUINO_CONFIG_PATH 
+    log.info('checkArduinoCLI using direct paths:', { 
+        cliPath: ARDUINO_CLI_PATH, 
+        configPath: ARDUINO_CONFIG_PATH 
     });
 
-    const cliPath = global.ARDUINO_CLI_PATH; // Use global explicitly
-    const configPath = global.ARDUINO_CONFIG_PATH; // Use global explicitly
-
-    // Add checks for null/undefined before checking existsSync
-    if (!cliPath) {
-        const errorMsg = 'Global Arduino CLI path is not set.';
+    if (!ARDUINO_CLI_PATH) { // Should not happen with direct calculation
+        const errorMsg = 'Arduino CLI path constant is not set.';
         log.error(errorMsg);
         throw new Error(errorMsg);
     }
-    if (!fs.existsSync(cliPath)) {
-        const errorMsg = 'Arduino CLI not found at global path. Please restart the application.';
-        log.error(errorMsg, { path: cliPath });
+    if (!fs.existsSync(ARDUINO_CLI_PATH)) {
+        const errorMsg = `Arduino CLI not found at expected path: ${ARDUINO_CLI_PATH}. Build might be incomplete or resource path incorrect.`;
+        log.error(errorMsg);
         throw new Error(errorMsg);
     }
     
-    if (!configPath) {
-        const errorMsg = 'Global Arduino CLI config path is not set.';
+    if (!ARDUINO_CONFIG_PATH) { // Should not happen
+        const errorMsg = 'Arduino CLI config path constant is not set.';
         log.error(errorMsg);
         throw new Error(errorMsg);
     }
-    if (!fs.existsSync(configPath)) {
-        const errorMsg = 'Arduino CLI configuration not found at global path. Please restart the application.';
-        log.error(errorMsg, { path: configPath });
+    if (!fs.existsSync(ARDUINO_CONFIG_PATH)) {
+        const errorMsg = `Arduino CLI configuration not found at expected path: ${ARDUINO_CONFIG_PATH}. Build might be incomplete or resource path incorrect.`;
+        log.error(errorMsg);
         throw new Error(errorMsg);
     }
-    log.info('Arduino CLI checks passed using global paths.');
+    log.info('Arduino CLI checks passed using direct paths.');
 }
 
 // Clean up temporary files
@@ -175,13 +134,13 @@ function createWindow() {
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false,
-            enableRemoteModule: true,
-            webSecurity: false // Only for development
+            // enableRemoteModule: true, // Deprecated and potentially insecure
+            preload: path.join(__dirname, 'preload.js') // Recommended: Use a preload script
         }
     });
 
     // Load the index.html file
-    const indexHtmlPath = isDev ? 'index.html' : path.join(app.getAppPath(), 'index.html');
+    const indexHtmlPath = path.join(__dirname, '..', 'index.html'); // Simplified path for both dev/prod
     log.info(`Loading index.html from: ${indexHtmlPath}`);
     mainWindow.loadFile(indexHtmlPath);
 
@@ -215,43 +174,42 @@ app.on('ready', () => {
 app.whenReady().then(async () => {
     log.info('App whenReady promise resolved');
     try {
-        log.info('Initial app whenReady setup call...');
-        await setupProductionEnvironment();
-        // Check if setup succeeded before creating window
-        if (global.setupComplete) {
-            log.info('Initial setup successful, creating window.');
-    createWindow();
-        } else {
-            log.error('Initial setup failed. Cannot create main window.');
-            // Optionally, show an error dialog to the user here
-            app.quit(); // Quit if setup fails critically
-        }
+        // Check if the essential bundled CLI exists before creating the window
+        checkArduinoCLI(); 
+        createWindow();
     } catch (error) {
-        log.error('Critical startup error during initial setup:', error);
-        // Optionally, show an error dialog
+        log.error('Critical startup error during CLI check:', error);
+        // Consider showing an error dialog to the user here
+        // dialog.showErrorBox('Fatal Error', 'Required Arduino components are missing or corrupted. Please reinstall the application.\n\nDetails: ' + error.message);
         app.quit();
     }
 
     app.on('activate', function () {
         log.info('App activate event fired');
         if (BrowserWindow.getAllWindows().length === 0) {
-             // Ensure setup is okay before creating window on activate
-             if (global.setupComplete) {
+            try {
+                 checkArduinoCLI(); // Re-check on activate if creating new window
                  createWindow();
-             } else {
-                 log.warn('Activate event: Setup not complete, not creating window.');
-             }
+            } catch (error) {
+                 log.error('Critical activate error during CLI check:', error);
+                 // dialog.showErrorBox(...);
+                 app.quit();
+            }
         }
     });
 });
 
 app.on('window-all-closed', function () {
     log.info('App window-all-closed event fired');
-    if (process.platform !== 'darwin') app.quit();
+    if (process.platform !== 'darwin') {
+         cleanupTempFiles(); // Clean up temp sketch folder on exit
+         app.quit();
+    }
 });
 
 app.on('quit', () => {
-    log.info('App quit event fired');
+     log.info('App quit event fired');
+     cleanupTempFiles(); // Ensure cleanup happens on quit as well
 });
 
 // Keep track of open ports
@@ -349,11 +307,8 @@ ipcMain.handle('list-ports', async () => {
     try {
         // Ensure environment is set up first
         log.info('list-ports: Ensuring setup...');
-        await setupProductionEnvironment();
+        await checkArduinoCLI();
         log.info('list-ports: Setup confirmed.');
-        
-        // Now check Arduino CLI
-        checkArduinoCLI();
         
         const ports = await listPortsWithRetry();
         log.info('Available ports:', ports);
@@ -451,17 +406,16 @@ ipcMain.handle('detect-board', async (event, portPath) => {
     try {
         // Ensure setup is complete first
         log.info('detect-board: Ensuring setup...');
-        await setupProductionEnvironment(); 
+        await checkArduinoCLI(); 
         log.info('detect-board: Setup confirmed.');
 
-        checkArduinoCLI();
         if (!portPath) {
             throw new Error('Port path is required');
         }
 
         // Properly quote paths for the command - Use working directory paths!
-        const cliPath = `"${global.ARDUINO_CLI_PATH}"`; // Already uses global
-        const configPath = `"${global.ARDUINO_CONFIG_PATH}"`; // Already uses global
+        const cliPath = `"${ARDUINO_CLI_PATH}"`; // Already uses global
+        const configPath = `"${ARDUINO_CONFIG_PATH}"`; // Already uses global
         
         log.info('Executing board detection command...', { cliPath, configPath });
         
@@ -753,14 +707,14 @@ ipcMain.handle('upload-code', async (event, { code, port, board }) => {
     try {
         // Ensure setup is complete first
         log.info('upload-code: Ensuring setup...');
-        await setupProductionEnvironment(); 
+        await checkArduinoCLI(); 
         log.info('upload-code: Setup confirmed.');
 
         // Log the state of globals right before check
         log.info('>>> Checking global paths before use in upload-code:', { 
-            cliPath: global.ARDUINO_CLI_PATH, 
-            configPath: global.ARDUINO_CONFIG_PATH, 
-            workDir: global.ARDUINO_WORK_DIR 
+            cliPath: ARDUINO_CLI_PATH, 
+            configPath: ARDUINO_CONFIG_PATH, 
+            workDir: ARDUINO_DATA_DIR 
         });
 
         checkArduinoCLI(); // Will throw if paths are bad
@@ -800,8 +754,8 @@ ipcMain.handle('upload-code', async (event, { code, port, board }) => {
         }
         log.info(`Using FQBN for upload: ${fqbnToUse}`);
 
-        // Create sketch in working directory
-        const sketchDir = path.join(global.ARDUINO_WORK_DIR, 'sketches', 'upload'); 
+        // Create sketch in the OS temporary directory
+        const sketchDir = TEMP_SKETCH_DIR; // Use OS temp dir
         fs.mkdirSync(sketchDir, { recursive: true });
         const sketchPath = path.join(sketchDir, 'upload.ino');
         
@@ -812,8 +766,8 @@ ipcMain.handle('upload-code', async (event, { code, port, board }) => {
         // Compile the code asynchronously
         log.info('Compiling sketch...');
         // Use double quotes for all paths on Windows
-        const cliPathQuoted = `"${global.ARDUINO_CLI_PATH}"`;
-        const configPathQuoted = `"${global.ARDUINO_CONFIG_PATH}"`;
+        const cliPathQuoted = `"${ARDUINO_CLI_PATH}"`;
+        const configPathQuoted = `"${ARDUINO_CONFIG_PATH}"`;
         const sketchDirQuoted = `"${sketchDir}"`;
         
         const compileCmd = `${cliPathQuoted} compile --config-file ${configPathQuoted} --fqbn ${fqbnToUse} ${sketchDirQuoted}`; 
@@ -822,7 +776,7 @@ ipcMain.handle('upload-code', async (event, { code, port, board }) => {
         try {
             // Run compilation asynchronously
             await runCommandAsync(compileCmd, { 
-                cwd: global.ARDUINO_WORK_DIR,
+                cwd: ARDUINO_DATA_DIR,
                 timeout: 30000 // 30 second timeout
             });
             
@@ -835,7 +789,7 @@ ipcMain.handle('upload-code', async (event, { code, port, board }) => {
             
             try {
                 await runCommandAsync(uploadCmd, { 
-                    cwd: global.ARDUINO_WORK_DIR,
+                    cwd: ARDUINO_DATA_DIR,
                     timeout: 60000 // 60 second timeout
                 });
                 
@@ -863,7 +817,7 @@ ipcMain.handle('upload-code', async (event, { code, port, board }) => {
                         
                         try {
                             await runCommandAsync(uploadCmd, { 
-                                cwd: global.ARDUINO_WORK_DIR,
+                                cwd: ARDUINO_DATA_DIR,
                                 timeout: 60000 // 60 second timeout
                             });
                             
@@ -896,7 +850,7 @@ ipcMain.handle('upload-code', async (event, { code, port, board }) => {
                     
                     try {
                         await runCommandAsync(altUploadCmd, { 
-                            cwd: global.ARDUINO_WORK_DIR,
+                            cwd: ARDUINO_DATA_DIR,
                             timeout: 60000 // 60 second timeout
                         });
                         
@@ -931,7 +885,7 @@ ipcMain.handle('upload-code', async (event, { code, port, board }) => {
                 
                 try {
                     await runCommandAsync(altCompileCmd, { 
-                        cwd: global.ARDUINO_WORK_DIR,
+                        cwd: ARDUINO_DATA_DIR,
                         timeout: 30000 // 30 second timeout
                     });
                     
@@ -942,7 +896,7 @@ ipcMain.handle('upload-code', async (event, { code, port, board }) => {
                     
                     try {
                         await runCommandAsync(altUploadCmd, { 
-                            cwd: global.ARDUINO_WORK_DIR,
+                            cwd: ARDUINO_DATA_DIR,
                             timeout: 60000 // 60 second timeout
                         });
                         
@@ -992,7 +946,8 @@ ipcMain.handle('install-library', async (event, libraryName) => {
         if (!libraryName) {
             throw new Error('Library name is required');
         }
-        execSync(`"${ARDUINO_CLI_PATH}" lib install "${libraryName}"`, {
+        // Add --config-file argument
+        execSync(`"${ARDUINO_CLI_PATH}" lib install --config-file "${ARDUINO_CONFIG_PATH}" "${libraryName}"`, {
             stdio: 'inherit'
         });
         return { success: true, message: `Library ${libraryName} installed successfully!` };
@@ -1010,7 +965,8 @@ ipcMain.handle('install-board', async (event, boardPackage) => {
         if (!boardPackage) {
             throw new Error('Board package is required');
         }
-        execSync(`"${ARDUINO_CLI_PATH}" core install "${boardPackage}"`, {
+        // Add --config-file argument
+        execSync(`"${ARDUINO_CLI_PATH}" core install --config-file "${ARDUINO_CONFIG_PATH}" "${boardPackage}"`, {
             stdio: 'inherit'
         });
         return { success: true, message: `Board package ${boardPackage} installed successfully!` };
@@ -1047,8 +1003,4 @@ function setupIPC() {
     };
 }
 
-// Call setupIPC when app is ready
-app.whenReady().then(() => {
-    setupIPC();
-    createWindow();
-}); 
+setupIPC(); // Call to register handlers 
