@@ -31,6 +31,12 @@ Thumbs.db
 # Temporary files
 *.tmp
 
+# Arduino CLI build/state files (Should not be committed)
+arduino-data/inventory.yaml
+arduino-data/*.latest
+arduino-data/*.lock
+arduino-data/downloads/
+
 # Electron specific (if using electron-builder or similar)
 # release/
 # *.asar
