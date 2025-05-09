@@ -767,7 +767,18 @@ function createDefaultBlocks() {
 
         // Add a default delay block to loop
         const delayBlock = workspace.newBlock('time_delay');
-        delayBlock.setFieldValue(1000, 'DELAY_TIME_MILI');
+        
+        // Create shadow block for delay time
+        const shadowBlock = workspace.newBlock('math_number');
+        shadowBlock.setFieldValue(1000, 'NUM');
+        shadowBlock.initSvg();
+        
+        // Connect shadow to delay
+        const delayInput = delayBlock.getInput('DELAY_TIME_MILI');
+        if (delayInput && delayInput.connection) {
+            delayInput.connection.connect(shadowBlock.outputConnection);
+        }
+        
         delayBlock.initSvg();
         delayBlock.render();
 
@@ -1004,7 +1015,7 @@ async function refreshPorts() {
                 const option = document.createElement('option');
                 option.value = port.path;
                 // Try to create a more descriptive name
-                let friendlyName = port.friendlyName || port.path;
+                let friendlyName = port.path;
                 if (port.manufacturer) friendlyName += ` (${port.manufacturer})`;
                 option.textContent = friendlyName;
                 portSelector.appendChild(option);

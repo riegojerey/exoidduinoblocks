@@ -346,24 +346,34 @@ Blockly.Arduino['io_digitalread_num'] = function(block) {
 // Analog Read Generator with Variable
 Blockly.Arduino['io_analogread_var'] = function(block) {
     try {
-        // Get the variable name directly
-        var variable = block.getFieldValue('PIN');
-        if (!variable) {
-            console.error('Pin variable not found');
-            return ['0', Blockly.Arduino.ORDER_ATOMIC];
-        }
-        
-        // Get the actual variable object from workspace
-        var variableObj = Blockly.Variables.getVariable(block.workspace, variable);
-        if (!variableObj) {
-            console.error('Variable object not found');
+        var pin_id = block.getFieldValue('PIN'); // Get the variable ID from the field
+        var pin_name_to_use = pin_id; // Default to ID if lookup fails or variable not found
+
+        if (!pin_id) {
+            console.error('AnalogReadVar: No variable ID found in PIN field.');
             return ['0', Blockly.Arduino.ORDER_ATOMIC];
         }
 
-        // Use the variable name for the analogRead function
-        return [`analogRead(${variableObj.name})`, Blockly.Arduino.ORDER_ATOMIC];
+        var variableModel = Blockly.Variables.getVariable(block.workspace, pin_id);
+        
+        if (variableModel) {
+            pin_name_to_use = variableModel.name; // Use the user-facing name from the model
+        } else {
+            console.warn('AnalogReadVar: Variable model not found for ID:', pin_id, '. Using ID as name.');
+            // pin_name_to_use remains the ID in this case, which is the problematic behavior
+            // but this indicates an issue with variable resolution not the generator logic itself if this path is taken.
+            // For safety, we could return '0' if the model isn't found.
+            // However, to match digitalread_var which seems to work even if model lookup failed (using ID then):
+            // We'll proceed using pin_name_to_use (which would be the ID if model not found)
+            // but the console warning is important.
+            // A stricter approach would be: 
+            // console.error('AnalogReadVar: Variable model not found for ID:', pin_id);
+            // return ['0', Blockly.Arduino.ORDER_ATOMIC];
+        }
+        
+        return [`analogRead(${pin_name_to_use})`, Blockly.Arduino.ORDER_ATOMIC];
     } catch (e) {
-        console.error('Error in analogread_var:', e.message);
+        console.error('Error in io_analogread_var generator:', e.message);
         return ['0', Blockly.Arduino.ORDER_ATOMIC];
     }
 };

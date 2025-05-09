@@ -10,9 +10,12 @@ if (typeof Blockly === 'undefined' || !Blockly.Arduino) {
 
 Blockly.Arduino['arduino_setup'] = function(block) {
   var statements_setup = Blockly.Arduino.statementToCode(block, 'SETUP');
+  console.log("Arduino Setup Generator - statements_setup:\n", statements_setup);
   // Code in the setup block is added to the setups_ dictionary.
   Blockly.Arduino.setups_['user_setup'] = statements_setup;
-  return ''; // This block doesn't generate code directly into the loop
+  var returnValue = '';
+  console.log("Arduino Setup Generator - returning:", returnValue);
+  return returnValue; // This block doesn't generate code directly into the loop
 };
 
 Blockly.Arduino['arduino_loop'] = function(block) {

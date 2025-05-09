@@ -267,144 +267,131 @@ function initializeArduinoGenerator() {
      */
     Blockly.Arduino.workspaceToCode = function(workspace) {
         try {
-            // Initialize the generator
+            // Initialize the generator (clears definitions_, setups_, etc.)
             Blockly.Arduino.init(workspace);
 
-            let setupCode = '';
-            let loopCode = '';
+            var code = []; // Array to hold code from top-level blocks
 
-            // Generate code for each top-level block
             const blocks = workspace.getTopBlocks(true);
             for (let i = 0; i < blocks.length; i++) {
                 const block = blocks[i];
-                let code = '';
-
-                try {
-                    if (block.type === 'arduino_setup') {
-                        // Get code from the setup block's statement input
-                        code = Blockly.Arduino.statementToCode(block, 'SETUP') || '';
-                        if (code) {
-                            setupCode += code;
-                        }
-                    } else if (block.type === 'arduino_loop') {
-                        // Get code from the loop block's statement input
-                        code = Blockly.Arduino.statementToCode(block, 'LOOP') || '';
-                        if (code) {
-                            loopCode += code;
-                        }
-                    } else if (!block.getParent()) {
-                        // Handle any other top-level blocks - they go into loop
-                        code = Blockly.Arduino.blockToCode(block);
-                        if (code && !block.outputConnection) {
-                            // Check if this block is meant for setup
-                            if (block.getCommentText() && block.getCommentText().toLowerCase().includes('setup')) {
-                                setupCode += code;
-                            } else {
-                                loopCode += code;
-                            }
-                        }
+                var line = Blockly.Arduino.blockToCode(block);
+                if (Array.isArray(line)) {
+                    // Value blocks return tuples of code and operator order.
+                    // Top-level blocks don't care about operator order.
+                    line = line[0];
+                }
+                if (line) {
+                    // For Arduino, naked values (expressions not ending in ';') are not typical at top level.
+                    // But if scrubNakedValue is defined, use it.
+                    if (block.outputConnection && Blockly.Arduino.scrubNakedValue) {
+                        line = Blockly.Arduino.scrubNakedValue(line);
                     }
-                } catch (e) {
-                    console.error('Error generating code for block:', e);
-                    loopCode += `// Error generating code for block: ${e.message}\n`;
+                    code.push(line);
                 }
             }
+            var mainBlockCode = code.join('\n');
+            
+            // The Blockly.Arduino.finish function will correctly use 
+            // Blockly.Arduino.definitions_, Blockly.Arduino.setups_ (populated by block generators)
+            // and the mainBlockCode (which should primarily be from arduino_loop).
+            return Blockly.Arduino.finish(mainBlockCode);
 
-            // Join the code and finalize
-            return Blockly.Arduino.finish(setupCode + '\n' + loopCode);
-        } catch (error) {
-            console.error('Error generating Arduino code:', error);
-            return `// ERROR: Failed to generate Arduino code: ${error.message}\n`;
+        } catch (e) {
+            console.error("Error in Arduino workspaceToCode:", e);
+            return `// FATAL ERROR in workspaceToCode: ${e.message}\nvoid setup() {}\nvoid loop() {}`;
         }
     };
 
-    /**
-     * Generate code for a specific block.
-     * @param {Blockly.Block} block The block to generate code for.
-     * @return {string|[string, number]} Generated code and order of operations.
-     */
-    Blockly.Arduino.blockToCode = function(block) {
-        if (!block) {
-            return '';
-        }
+    // /**
+    //  * Generate code for a specific block.
+    //  * @param {Blockly.Block} block The block to generate code for.
+    //  * @return {string|[string, number]} Generated code and order of operations.
+    //  */
+    // Blockly.Arduino.blockToCode = function(block) { // COMMENTED OUT - Use prototype method
+    //     if (!block) {
+    //         return '';
+    //     }
+    // 
+    //     try {
+    //         // Handle value blocks
+    //         if (block.outputConnection) {
+    //             const func = Blockly.Arduino[block.type];
+    //             if (func) {
+    //                 const code = func.call(block, block);
+    //                 if (Array.isArray(code)) {
+    //                     return code[0]; // PROBLEM: Discards order, should return [code, order]
+    //                 }
+    //                 return code;
+    //             }
+    //             console.warn(`No generator found for value block type: ${block.type}`);
+    //             return '';
+    //         }
+    // 
+    //         // Handle statement blocks
+    //         const generator = Blockly.Arduino[block.type];
+    //         if (generator) {
+    //             return generator.call(block, block);
+    //         }
+    //         console.warn(`No generator found for block type: ${block.type}`);
+    //         return `// WARNING: No generator for block type: ${block.type}\n`;
+    //     } catch (error) {
+    //         console.error(`Error generating code for block ${block.type}:`, error);
+    //         return `// ERROR in ${block.type}: ${error.message}\n`;
+    //     }
+    // };
 
-        try {
-            // Handle value blocks
-            if (block.outputConnection) {
-                const func = Blockly.Arduino[block.type];
-                if (func) {
-                    const code = func.call(block, block);
-                    if (Array.isArray(code)) {
-                        return code[0];
-                    }
-                    return code;
-                }
-                console.warn(`No generator found for value block type: ${block.type}`);
-                return '';
-            }
+    // /**
+    //  * Convert a statement input to code.
+    //  * @param {Blockly.Block} block The block containing the input.
+    //  * @param {string} name The name of the input.
+    //  * @return {string} Generated code for the input.
+    //  */
+    // Blockly.Arduino.statementToCode = function(block, name) { // COMMENTED OUT - Use prototype method
+    //     const targetBlock = block.getInputTargetBlock(name);
+    //     if (!targetBlock) {
+    //         return '';
+    //     }
+    // 
+    //     let code = '';
+    //     let currentBlock = targetBlock;
+    // 
+    //     while (currentBlock) {
+    //         try {
+    //             const blockCode = this.blockToCode(currentBlock); // Uses custom blockToCode
+    //             if (blockCode) {
+    //                 code += blockCode;
+    //             }
+    //         } catch (e) {
+    //             console.error('Error in statement generation:', e);
+    //             code += `// Error: ${e.message}\n`;
+    //         }
+    //         currentBlock = currentBlock.getNextBlock();
+    //     }
+    // 
+    //     return code;
+    // };
 
-            // Handle statement blocks
-            const generator = Blockly.Arduino[block.type];
-            if (generator) {
-                return generator.call(block, block);
-            }
-            console.warn(`No generator found for block type: ${block.type}`);
-            return `// WARNING: No generator for block type: ${block.type}\n`;
-        } catch (error) {
-            console.error(`Error generating code for block ${block.type}:`, error);
-            return `// ERROR in ${block.type}: ${error.message}\n`;
-        }
-    };
-
-    /**
-     * Convert a statement input to code.
-     * @param {Blockly.Block} block The block containing the input.
-     * @param {string} name The name of the input.
-     * @return {string} Generated code for the input.
-     */
-    Blockly.Arduino.statementToCode = function(block, name) {
-        const targetBlock = block.getInputTargetBlock(name);
-        if (!targetBlock) {
-            return '';
-        }
-
-        let code = '';
-        let currentBlock = targetBlock;
-
-        while (currentBlock) {
-            try {
-                const blockCode = this.blockToCode(currentBlock);
-                if (blockCode) {
-                    code += blockCode;
-                }
-            } catch (e) {
-                console.error('Error in statement generation:', e);
-                code += `// Error: ${e.message}\n`;
-            }
-            currentBlock = currentBlock.getNextBlock();
-        }
-
-        return code;
-    };
-
-    /**
-     * Convert a value input to code.
-     * @param {Blockly.Block} block The block containing the input.
-     * @param {string} name The name of the input.
-     * @param {number} order The order of operations.
-     * @return {string} Generated code for the input.
-     */
-    Blockly.Arduino.valueToCode = function(block, name, order) {
-        const targetBlock = block.getInputTargetBlock(name);
-        if (!targetBlock) {
-            return '0';
-        }
-        let code = this.blockToCode(targetBlock);
-        if (Array.isArray(code)) {
-            return code[0];
-        }
-        return code || '0';
-    };
+    // /**
+    //  * Convert a value input to code.
+    //  * @param {Blockly.Block} block The block containing the input.
+    //  * @param {string} name The name of the input.
+    //  * @param {number} order The order of operations.
+    //  * @return {string} Generated code for the input.
+    //  */
+    // Blockly.Arduino.valueToCode = function(block, name, order) { // COMMENTED OUT - Use prototype method
+    //     const targetBlock = block.getInputTargetBlock(name);
+    //     if (!targetBlock) {
+    //         return '0'; // Default value if no block connected
+    //     }
+    //     let code = this.blockToCode(targetBlock); // Uses custom blockToCode
+    //     // PROBLEM: This custom blockToCode returns a string, not [code, order] for value blocks.
+    //     // Standard valueToCode expects [code, order] to handle precedence.
+    //     if (Array.isArray(code)) { // This check might not behave as expected if blockToCode is modified
+    //         return code[0]; 
+    //     }
+    //     return code || '0'; // Default value if code is empty
+    // };
 
     // Add basic math block generators
     Blockly.Arduino['math_number'] = function(block) {

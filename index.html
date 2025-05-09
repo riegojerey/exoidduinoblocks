@@ -168,25 +168,33 @@
             <block type="arduino_loop">
                 <statement name="LOOP">
                     <block type="time_delay">
-                        <field name="DELAY_TIME_MILI">1000</field>
+                        <value name="DELAY_TIME_MILI">
+                            <shadow type="math_number">
+                                <field name="NUM">1000</field>
+                            </shadow>
+                        </value>
                     </block>
                 </statement>
             </block>
         </category>
+        <category name="Preprocessor" colour="60">
+            <block type="preprocessor_define"></block>
+            <block type="preprocessor_get_define"></block>
+        </category>
         <category name="Time" colour="140">
             <block type="time_delay">
-                 <value name="DELAY_TIME_MILI">
-                     <shadow type="math_number">
-                         <field name="NUM">1000</field>
-                     </shadow>
-                 </value>
+                <value name="DELAY_TIME_MILI">
+                    <shadow type="math_number">
+                        <field name="NUM">1000</field>
+                    </shadow>
+                </value>
             </block>
             <block type="time_delaymicros">
-                 <value name="DELAY_TIME_MICRO">
-                     <shadow type="math_number">
+                <value name="DELAY_TIME_MICRO">
+                    <shadow type="math_number">
                          <field name="NUM">1000</field>
-                     </shadow>
-                 </value>
+                    </shadow>
+                </value>
             </block>
             <block type="time_millis"></block>
             <block type="time_micros"></block>
@@ -307,6 +315,40 @@
             <block type="logic_operation"></block>
             <block type="logic_negate"></block>
             <block type="logic_boolean"></block>
+            <sep gap="16"></sep>
+            <label text="Switch/Case" web-class="toolbox-label"></label>
+            <block type="controls_switch">
+                <statement name="CASES">
+                    <block type="controls_case">
+                        <value name="CASE_VALUE">
+                            <shadow type="math_number">
+                                <field name="NUM">1</field>
+                            </shadow>
+                        </value>
+                        <statement name="DO">
+                            <!-- Optional: Add a default action here -->
+                        </statement>
+                        <next>
+                            <block type="controls_default">
+                                <statement name="DO">
+                                    <!-- Optional: Add a default action here -->
+                                </statement>
+                            </block>
+                        </next>
+                    </block>
+                </statement>
+            </block>
+            <block type="controls_case">
+                <value name="CASE_VALUE">
+                    <shadow type="math_number">
+                        <field name="NUM">0</field>
+                    </shadow>
+                </value>
+            </block>
+            <block type="controls_default"></block>
+            <sep gap="16"></sep>
+            <label text="Control Flow" web-class="toolbox-label"></label>
+            <block type="controls_break"></block>
         </category>
         <category name="Loops" colour="120"> <block type="controls_repeat_ext"> <value name="TIMES"> <shadow type="math_number"><field name="NUM">10</field></shadow> </value> </block> <block type="controls_whileUntil"></block> <block type="controls_for"> <value name="FROM"><shadow type="math_number"><field name="NUM">1</field></shadow></value> <value name="TO"><shadow type="math_number"><field name="NUM">10</field></shadow></value> <value name="BY"><shadow type="math_number"><field name="NUM">1</field></shadow></value> </block> <block type="controls_flow_statements"></block> </category>
         <category name="Math" colour="230">
@@ -438,7 +480,19 @@
                 </value>
             </block>
         </category>
-        <category name="Functions" colour="290" custom="PROCEDURE"></category>
+        <category name="Functions" colour="290">
+            <block type="procedures_defnoreturn"></block>
+            <block type="procedures_defreturn"></block>
+            <sep gap="8"></sep>
+            <block type="procedures_callnoreturn"></block>
+            <block type="procedures_callreturn"></block>
+            <sep gap="8"></sep>
+            <block type="procedures_ifreturn"></block>
+            <sep gap="16"></sep>
+            <label text="Return Statements" web-class="toolbox-label"></label>
+            <block type="custom_return_statement"></block>
+            <block type="custom_return_value_statement"></block>
+        </category>
         <category name="PID Control" colour="230">
             <block type="pid_create"></block>
             <block type="pid_compute"></block>
@@ -464,6 +518,7 @@
     <script src="libs/generator/arduino_io.js"></script>
     <script src="libs/generator/arduino_serial.js"></script>
     <script src="libs/generator/arduino_time.js"></script>
+    <script src="libs/generator/arduino_preprocessor.js"></script>
     <script src="libs/generator/blink.js"></script>
     <script src="libs/generator/encoder.js"></script>
     <script src="libs/generator/l298n.js"></script>
@@ -479,6 +534,7 @@
     <script src="libs/generator/text.js"></script>
     <script src="libs/generator/ultrasonic.js"></script>
     <script src="libs/generator/variables.js"></script>
+    <script src="libs/generator/arduino_control.js"></script>
 
     <!-- Error handling for script loading -->
     <script>

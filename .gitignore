@@ -17,6 +17,7 @@ out/
 # Operating System files
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # IDE / Editor specific
 .vscode/ # Keep extensions.json and project-specific settings.json if desired
@@ -27,6 +28,7 @@ Thumbs.db
 *.user
 *.swp
 *.swo
+*~
 
 # Temporary files
 *.tmp
@@ -52,8 +54,46 @@ arduino-data/downloads/
 # Environment
 .env
 .env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # Environment variables
 .env
 .env.local
-.env.*.local 
+.env.*.local
+
+# Dependency directories
+bower_components/
+
+# Arduino specific
+*.hex
+*.elf
+*.eep
+*.bin
+*.lst
+*.map
+*.sym
+*.lss
+*.o
+*.d
+*.mk
+*.a
+
+# Compiled sketches
+sketch/
+*.ino.cpp
+*.ino.elf
+*.ino.hex
+
+# Cache directories
+.cache/
+.temp/
+
+# Coverage directory
+coverage/
+
+# Misc
+*.bak
+*.backup
+*.old 

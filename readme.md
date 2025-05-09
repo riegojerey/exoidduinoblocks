@@ -1,116 +1,100 @@
-# ExoiDuino by Exoid Robotics
+# ExoiDuino Blocks
 
-ExoiDuino is a block-based programming environment designed to make learning and programming Arduino boards easier and more accessible. It utilizes the Blockly library for a visual coding experience and integrates the Arduino CLI to allow compiling and uploading code directly to connected boards (in the Desktop version).
+<div align="center">
+  <img src="img/simple.png" alt="Simple Configuration Example" width="800"/>
+  <p><em>Simple configuration example: Basic LED blinking with delay</em></p>
+</div>
 
-## Versions / Deployment
+## 🚀 Overview
 
-There are two ways to use ExoiDuino:
+ExoiDuino Blocks is a web-based visual programming environment for Arduino, making it easy for beginners to learn programming while providing advanced features for experienced users. Create Arduino sketches using drag-and-drop blocks, similar to Scratch but specifically designed for Arduino development.
 
-### 1. Web Application (Live Demo / Code Generation)
+## ✨ Features
 
-*   **Access:** Runs directly in modern web browsers.
-*   **Host:** Typically hosted via GitHub Pages (replace with your actual link if available: `https://riegojerey.github.io/exoidduinoblocks/`).
-*   **Features:** Visual block programming, real-time Arduino C++ code generation, workspace saving (local storage), code export (`.ino`).
-*   **Limitations:** Due to browser security restrictions, the web version **CANNOT** directly compile or upload code to an Arduino board. It can connect to a port via Web Serial (if supported by the browser) but primarily serves as a code generation tool.
-*   **Workflow:** Create your program using blocks, copy the generated C++ code, and paste it into the Arduino IDE or use it with an external Arduino CLI installation to compile and upload.
+- 🎨 **Visual Block Programming**: Drag-and-drop interface for Arduino programming
+- 🔌 **Arduino-Specific Blocks**: 
+  - Digital & Analog I/O
+  - Serial Communication
+  - Time Functions
+  - Motor Controls (DC, Servo, Stepper)
+  - Sensor Integration
+  - PID Control
+- 🛠️ **Advanced Features**:
+  - Custom Function Creation
+  - Variable Management
+  - Preprocessor Directives
+  - Switch/Case Statements
+- 📝 **Real-time Code Generation**: See your blocks converted to Arduino code instantly
+- 🔄 **Code Export**: Save your sketches as .ino files
 
-### 2. Desktop Application (Offline Build & Upload)
+## 🌟 From Simple to Complex
 
-*   **Access:** Downloadable `.exe` application for Windows (built using Electron).
-*   **Features:** Includes all Web App features PLUS:
-    *   **Offline Compilation & Upload:** Bundles the Arduino CLI, AVR board cores, and necessary libraries.
-    *   Directly compiles and uploads code to connected Arduino Uno/Nano/Mega boards without needing an external IDE or internet connection.
-    *   Port detection using system serial port access.
-*   **Target User:** Ideal for users who need a self-contained, offline tool for programming Arduinos, such as in educational settings or areas with limited internet.
+ExoiDuino Blocks scales with your needs:
 
----
+### Simple Projects
+Perfect for beginners starting with basic Arduino concepts:
+- LED control
+- Button inputs
+- Simple sensor readings
+- Basic motor control
 
-## Using the Web Application
+### Complex Projects
+Powerful enough for advanced applications:
 
-1.  **Access:** Open the GitHub Pages link (if available) OR clone this repository (`git clone <your-repo-url>`) and open the `index.html` file directly in your browser.
-2.  **Browser Requirement:** Requires a modern browser supporting the Web Serial API (e.g., Google Chrome, Microsoft Edge) for any serial port interaction features.
-3.  **Generate Code:** Use the Blockly interface to create your program.
-4.  **Copy Code:** Copy the generated Arduino C++ code from the code preview pane.
-5.  **Compile/Upload:** Paste the code into the Arduino IDE or use an external Arduino CLI installation to compile and upload to your board.
+<div align="center">
+  <img src="img/complex.png" alt="Complex Configuration Example" width="800"/>
+  <p><em>Complex configuration example: Advanced motor control with sensor feedback and PID</em></p>
+</div>
 
----
+## 🚀 Getting Started
 
-## Developing and Building the Desktop Application
+1. **Clone the Repository**
+   ```bash
+   git clone https://github.com/yourusername/exoiduinoblocks.git
+   cd exoiduinoblocks
+   ```
 
-These instructions are for developers who want to run the Electron version locally or build the distributable `.exe`.
+2. **Open in Browser**
+   - Open `index.html` in your web browser
+   - No server required! Works completely client-side
 
-### Prerequisites
+3. **Start Building**
+   - Drag blocks from the toolbox
+   - Connect them to create your program
+   - Export the generated code to Arduino IDE
 
-*   **Node.js:** Version 16.0.0 or higher (includes npm). Download from [nodejs.org](https://nodejs.org/).
-*   **Git:** For cloning the repository. Download from [git-scm.com](https://git-scm.com/).
-*   **PowerShell:** Included with modern Windows versions. Needed to run the setup/build script.
+## 🔧 Block Categories
 
-### Setup for Development
+- **Setup**: Arduino initialization and pin configuration
+- **Input/Output**: Digital and analog I/O operations
+- **Time**: Delays and timing functions
+- **Motors**: DC, Servo, and Stepper motor controls
+- **Sensors**: Various sensor integration blocks
+- **Logic**: Control flow and decision making
+- **Math**: Mathematical operations and calculations
+- **Functions**: Custom function creation
+- **Variables**: Variable management
+- **Preprocessor**: #define and other directives
+- **PID Control**: PID controller blocks
 
-1.  **Clone the repository:**
-    ```bash
-    git clone <your-repository-url>
-    cd exoidduinoblocks
-    ```
+## 🤝 Contributing
 
-2.  **Run the Setup Script:**
-    This script installs Node.js dependencies, rebuilds native modules, downloads the Arduino CLI, and installs the necessary board cores and libraries into the local `arduino-data` directory. This environment is used for both development and building.
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
 
-    Open PowerShell **as Administrator** (recommended) and run:
-    ```powershell
-    # Navigate to the project directory first if you haven't already
-    pwsh -ExecutionPolicy Bypass -File .\setup.ps1
-    ```
-    *   _Note:_ The first run might take time to download components.
-    *   _Troubleshooting:_ If errors occur, ensure prerequisites are met. Adjust PowerShell execution policy if needed (Bypass is usually fine for development).
+## 📄 License
 
-### Running Locally (Development Mode)
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-After the setup script completes successfully:
+## 🙏 Acknowledgments
 
-```bash
-npm start
-```
-
-This launches the Electron application locally with developer tools enabled.
-
-### Building the `.exe` for Distribution
-
-To create the offline-capable `.exe` files:
-
-1.  **Ensure Setup is Complete:** Run `pwsh ./setup.ps1` successfully at least once.
-2.  **Run the Build Command:**
-    ```bash
-    npm run build
-    ```
-
-*   This re-runs `setup.ps1` to ensure the bundled environment is up-to-date and then uses `electron-builder` to package the application.
-*   Output (`.exe` installer and portable `.exe`) will be in the `dist/` directory.
-
----
-
-## Features Summary
-
-*   Visual block-based programming (Blockly)
-*   Arduino C++ code generation
-*   Board/Port detection (Desktop App)
-*   Offline code compilation and upload (Desktop App)
-*   Bundled Arduino CLI, AVR Cores, standard libraries (Desktop App)
-*   Code export to `.ino`
-
-## License
-
-This project is licensed under the MIT License - see the `LICENSE` file (if available) or `package.json` for details.
-
-## Support
-
-For support, please:
-- Open an issue on the GitHub repository
-- Visit [Exoid Robotics](https://www.exoidrobotics.com)
-- Contact us through our social media channels
+- Built with [Blockly](https://developers.google.com/blockly)
+- Inspired by [Arduino](https://www.arduino.cc/) and [Scratch](https://scratch.mit.edu/)
+- Special thanks to the open-source community
 
 ---
-Made with ❤️ by Exoid Robotics
+<div align="center">
+  Made with ❤️ by Exoid Robotics
+</div>
 
 ## File Structure
 

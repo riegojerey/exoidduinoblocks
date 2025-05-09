@@ -11,9 +11,9 @@ if (typeof Blockly === 'undefined' || !Blockly.Arduino) {
 // Time Delay Block
 Blockly.Blocks['time_delay'] = {
     init: function() {
-        this.appendDummyInput()
-            .appendField("Delay (ms)")
-            .appendField(new Blockly.FieldNumber(1000, 0), "DELAY_TIME_MILI");
+        this.appendValueInput("DELAY_TIME_MILI")
+            .setCheck("Number")
+            .appendField("Delay (ms)");
         this.setInputsInline(true);
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
@@ -25,7 +25,7 @@ Blockly.Blocks['time_delay'] = {
 
 // Generator for time_delay block
 Blockly.Arduino['time_delay'] = function(block) {
-    var time = block.getFieldValue('DELAY_TIME_MILI') || '1000';
+    var time = Blockly.Arduino.valueToCode(block, 'DELAY_TIME_MILI', Blockly.Arduino.ORDER_ATOMIC) || '1000';
     return `delay(${time});\n`;
 };
 

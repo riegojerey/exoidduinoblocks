@@ -79,3 +79,20 @@ Blockly.Arduino['logic_ternary'] = function(block) {
   var value_else = Blockly.Arduino.valueToCode(block, 'ELSE', Blockly.Arduino.ORDER_CONDITIONAL) || 'null';
   var code = value_if + ' ? ' + value_then + ' : ' + value_else; return [code, Blockly.Arduino.ORDER_CONDITIONAL];
 };
+
+// --- Break Statement Block ---
+Blockly.Blocks['controls_break'] = {
+  init: function() {
+    this.appendDummyInput()
+        .appendField("break");
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(false, null); // No next statement because break exits the loop/switch
+    this.setColour(210); // Same color as other logic blocks
+    this.setTooltip("Exits the current loop or switch statement.");
+    this.setHelpUrl("https://www.arduino.cc/reference/en/language/structure/control-structure/break/");
+  }
+};
+
+Blockly.Arduino['controls_break'] = function(block) {
+  return 'break;\n';
+};

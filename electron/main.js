@@ -40,10 +40,10 @@ const TEMP_SKETCH_DIR = path.join(os.tmpdir(), 'ExoiDuinoSketch');
 log.info('-- Resource Paths --');
 log.info(`isDev: ${isDev}`);
 log.info(`RESOURCES_DIR: ${RESOURCES_DIR}`);
-log.info(`ARDUINO_DATA_DIR: ${ARDUINO_DATA_DIR}`);
-log.info(`ARDUINO_CLI_PATH: ${ARDUINO_CLI_PATH}`);
+    log.info(`ARDUINO_DATA_DIR: ${ARDUINO_DATA_DIR}`);
+    log.info(`ARDUINO_CLI_PATH: ${ARDUINO_CLI_PATH}`);
 log.info(`ARDUINO_CONFIG_PATH: ${ARDUINO_CONFIG_PATH}`);
-log.info('---------------------');
+    log.info('---------------------');
 
 // Helper function to copy directories recursively
 function copyDirectory(source, target) {
@@ -176,7 +176,7 @@ app.whenReady().then(async () => {
     try {
         // Check if the essential bundled CLI exists before creating the window
         checkArduinoCLI(); 
-        createWindow();
+    createWindow();
     } catch (error) {
         log.error('Critical startup error during CLI check:', error);
         // Consider showing an error dialog to the user here
@@ -194,7 +194,7 @@ app.whenReady().then(async () => {
                  log.error('Critical activate error during CLI check:', error);
                  // dialog.showErrorBox(...);
                  app.quit();
-            }
+             }
         }
     });
 });
@@ -208,7 +208,7 @@ app.on('window-all-closed', function () {
 });
 
 app.on('quit', () => {
-     log.info('App quit event fired');
+    log.info('App quit event fired');
      cleanupTempFiles(); // Ensure cleanup happens on quit as well
 });
 
@@ -757,7 +757,8 @@ ipcMain.handle('upload-code', async (event, { code, port, board }) => {
         // Create sketch in the OS temporary directory
         const sketchDir = TEMP_SKETCH_DIR; // Use OS temp dir
         fs.mkdirSync(sketchDir, { recursive: true });
-        const sketchPath = path.join(sketchDir, 'upload.ino');
+        const sketchName = 'ExoiDuinoSketch.ino'; // Define the sketch name to match the directory
+        const sketchPath = path.join(sketchDir, sketchName); // Use the defined sketch name
         
         // Write the code
         fs.writeFileSync(sketchPath, code || 'void setup() {}\nvoid loop() {}');

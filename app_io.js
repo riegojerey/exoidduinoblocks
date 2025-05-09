@@ -36,21 +36,15 @@ Blockly.Blocks['io_pin_mode'] = {
     }
 };
 
-// Analog Pin Block (A0-A5)
+// Analog Pin Block (A0-A5) -> Dynamically updated
 Blockly.Blocks['io_analog_pin'] = {
     init: function() {
         this.appendDummyInput()
-            .appendField(new Blockly.FieldDropdown([
-                ["A0", "A0"],
-                ["A1", "A1"],
-                ["A2", "A2"],
-                ["A3", "A3"],
-                ["A4", "A4"],
-                ["A5", "A5"]
-            ]), "PIN");
+            // Use the dynamic function instead of a hardcoded list
+            .appendField(new Blockly.FieldDropdown(window.getAnalogPinOptions), "PIN");
         this.setOutput(true, "Pin");
         this.setColour(260);
-        this.setTooltip("Select an analog pin (A0-A5) for reading analog values (0-1023)");
+        this.setTooltip("Select an analog pin (e.g., A0-A7 for Nano, A0-A15 for Mega) for reading analog values (0-1023)");
         this.setHelpUrl("https://www.arduino.cc/reference/en/language/functions/analog-io/analogread/");
     }
 };
@@ -294,21 +288,6 @@ Blockly.Blocks['io_digitalread_num'] = {
         this.setColour(260);
         this.setTooltip("Read HIGH (1) or LOW (0) from a digital pin using a number (0-53)");
         this.setHelpUrl("https://www.arduino.cc/reference/en/language/functions/digital-io/digitalread/");
-    }
-};
-
-// Time Delay Block
-Blockly.Blocks['time_delay'] = {
-    init: function() {
-        this.appendDummyInput()
-            .appendField("Delay (ms)")
-            .appendField(new Blockly.FieldNumber(1000, 0), "DELAY_TIME_MILI");
-        this.setInputsInline(true);
-        this.setPreviousStatement(true, null);
-        this.setNextStatement(true, null);
-        this.setColour(180);
-        this.setTooltip("Pause the program for a specified number of milliseconds");
-        this.setHelpUrl("https://www.arduino.cc/reference/en/language/functions/time/delay/");
     }
 };
 

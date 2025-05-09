@@ -15,6 +15,7 @@ Blockly.Blocks['variables_set'] = {
             .appendField('set')
             .appendField(new Blockly.FieldDropdown([
                 ['int', 'int'],
+                ['byte', 'byte'],
                 ['const int', 'const int'],
                 ['unsigned long', 'unsigned long'],
                 ['double', 'double'],
@@ -103,23 +104,25 @@ Blockly.Arduino['variables_set'] = function(block) {
     var declaration;
     switch(varType) {
         case 'float':
-            declaration = `float ${varName} = ${value};`;
+            declaration = `float ${varName} = ${value}f;`;
             break;
         case 'double':
             declaration = `double ${varName} = ${value};`;
             break;
-        case 'unsigned long':
-            declaration = `unsigned long ${varName} = ${value};`;
+        case 'string':
+            if (!value.startsWith('String(') && !value.startsWith('"')) {
+                value = `"${value}"`;
+            }
+            declaration = `String ${varName} = String(${value});`;
+            break;
+        case 'byte':
+            declaration = `byte ${varName} = ${value};`;
             break;
         case 'const int':
             declaration = `const int ${varName} = ${value};`;
             break;
-        case 'string':
-             // Ensure value is properly cast to String if it's not already quoted text
-            if (!(value.startsWith('"') && value.endsWith('"'))) {
-                 value = `String(${value})`;
-            }
-            declaration = `String ${varName} = ${value};`;
+        case 'unsigned long':
+            declaration = `unsigned long ${varName} = ${value};`;
             break;
         default:
             declaration = `int ${varName} = ${value};`;
@@ -139,7 +142,7 @@ Blockly.Arduino['variables_set'] = function(block) {
             if (!Blockly.Arduino.definitions_['var_' + varName]) {
                 Blockly.Arduino.definitions_['var_' + varName] = declaration;
             }
-            if (parent && parent.type === 'arduino_loop') {
+        if (parent && parent.type === 'arduino_loop') {
                 return `${varName} = ${value};\n`; // Re-assignment in loop
             }
             return ''; // Initial declaration was global
@@ -147,7 +150,7 @@ Blockly.Arduino['variables_set'] = function(block) {
             return `${declaration}\n`; // Local declaration in loop
         } else {
             if (!Blockly.Arduino.definitions_['var_' + varName]) {
-                 Blockly.Arduino.definitions_['var_' + varName] = declaration;
+        Blockly.Arduino.definitions_['var_' + varName] = declaration;
             }
             return ''; // Global declaration (outside setup/loop or only in setup)
         }
@@ -186,6 +189,12 @@ Blockly.Arduino['variables_change'] = function(block) {
             case 'double':
                 declaration = `double ${varName} = 0.0;`;
                 break;
+            case 'byte':
+                declaration = `byte ${varName} = 0;`;
+                break;
+            case 'unsigned long':
+                declaration = `unsigned long ${varName} = 0UL;`;
+                break;
             case 'string':
                 declaration = `String ${varName} = String("");`;
                 break;
@@ -199,11 +208,18 @@ Blockly.Arduino['variables_change'] = function(block) {
     switch(varType) {
         case 'float':
             return `${varName} = ${varName} + ${argument0}f;\n`;
-        case 'string':
-            if (!argument0.startsWith('"')) {
-                argument0 = `"${argument0}"`;
+        case 'byte':
+            return `${varName} = (${varType})(${varName} + ${argument0});\n`;
+        case 'unsigned long':
+            if (/^\d+$/.test(argument0) && !argument0.toLowerCase().endsWith('ul')) {
+                argument0 += 'UL';
             }
-            return `${varName} = String(${argument0});\n`;
+            return `${varName} = ${varName} + ${argument0};\n`;
+        case 'string':
+            if (!argument0.startsWith('"') && !argument0.startsWith('String(')) {
+                argument0 = `String(${argument0})`;
+            }
+            return `${varName} = ${argument0};\n`;
         default:
             return `${varName} = ${varName} + ${argument0};\n`;
     }
