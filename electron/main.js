@@ -35,15 +35,29 @@ const RESOURCES_DIR = app.isPackaged ? process.resourcesPath : path.join(__dirna
 const ARDUINO_DATA_DIR = path.join(RESOURCES_DIR, 'arduino-data');
 const ARDUINO_CLI_PATH = path.join(ARDUINO_DATA_DIR, process.platform === 'win32' ? 'arduino-cli.exe' : 'arduino-cli');
 const ARDUINO_CONFIG_PATH = path.join(ARDUINO_DATA_DIR, 'arduino-cli.yaml');
-const TEMP_SKETCH_DIR = path.join(os.tmpdir(), 'ExoiDuinoSketch');
+const TEMP_SKETCH_DIR = path.join(os.tmpdir(), 'ExoBlocksSketch');
 
+// Add detailed resource path logging
 log.info('-- Resource Paths --');
 log.info(`isDev: ${isDev}`);
+log.info(`App Path: ${app.getAppPath()}`);
+log.info(`Resources Path: ${process.resourcesPath}`);
 log.info(`RESOURCES_DIR: ${RESOURCES_DIR}`);
-    log.info(`ARDUINO_DATA_DIR: ${ARDUINO_DATA_DIR}`);
-    log.info(`ARDUINO_CLI_PATH: ${ARDUINO_CLI_PATH}`);
+log.info(`ARDUINO_DATA_DIR: ${ARDUINO_DATA_DIR}`);
+log.info(`ARDUINO_CLI_PATH: ${ARDUINO_CLI_PATH}`);
 log.info(`ARDUINO_CONFIG_PATH: ${ARDUINO_CONFIG_PATH}`);
-    log.info('---------------------');
+log.info(`Directory contents of ${ARDUINO_DATA_DIR}:`);
+try {
+    if (fs.existsSync(ARDUINO_DATA_DIR)) {
+        const files = fs.readdirSync(ARDUINO_DATA_DIR);
+        log.info(files.join(', '));
+    } else {
+        log.error(`ARDUINO_DATA_DIR does not exist: ${ARDUINO_DATA_DIR}`);
+    }
+} catch (err) {
+    log.error('Error reading ARDUINO_DATA_DIR:', err);
+}
+log.info('---------------------');
 
 // Helper function to copy directories recursively
 function copyDirectory(source, target) {
@@ -757,7 +771,7 @@ ipcMain.handle('upload-code', async (event, { code, port, board }) => {
         // Create sketch in the OS temporary directory
         const sketchDir = TEMP_SKETCH_DIR; // Use OS temp dir
         fs.mkdirSync(sketchDir, { recursive: true });
-        const sketchName = 'ExoiDuinoSketch.ino'; // Define the sketch name to match the directory
+        const sketchName = 'ExoBlocksSketch.ino'; // Define the sketch name to match the directory
         const sketchPath = path.join(sketchDir, sketchName); // Use the defined sketch name
         
         // Write the code

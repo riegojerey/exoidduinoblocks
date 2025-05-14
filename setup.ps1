@@ -1,9 +1,9 @@
-# Setup script for ExoiDuino
+# Setup script for ExoBlocks
 # This script handles the build process
 
 # Get absolute path where the script is running
 $baseDir = (Get-Location).Path
-Write-Host "🚀 Starting ExoiDuino Build in: $baseDir" -ForegroundColor Cyan
+Write-Host "🚀 Starting ExoBlocks Build in: $baseDir" -ForegroundColor Cyan
 
 # Function to handle errors
 function Handle-Error {
@@ -28,11 +28,11 @@ function Create-SafePath {
 function Clean-ComPorts {
     Write-Host "🔍 Checking for processes using COM ports..." -ForegroundColor Yellow
     
-    # Kill any existing ExoiDuino processes
-    $exoidProcesses = Get-Process | Where-Object { $_.ProcessName -like "*ExoiDuino*" }
-    if ($exoidProcesses) {
-        Write-Host "Found running ExoiDuino processes, stopping them..."
-        $exoidProcesses | ForEach-Object { 
+    # Kill any existing ExoBlocks processes
+    $exoProcesses = Get-Process | Where-Object { $_.ProcessName -like "*ExoBlocks*" }
+    if ($exoProcesses) {
+        Write-Host "Found running ExoBlocks processes, stopping them..."
+        $exoProcesses | ForEach-Object { 
             try {
                 $_ | Stop-Process -Force
                 Write-Host "Stopped process: $($_.ProcessName)"
@@ -231,8 +231,8 @@ Write-Host "Building application (both portable and installer)..."
 npx electron-builder --win
 
 # Verify build outputs
-$portableExe = Join-Path $baseDir "dist\ExoiDuino-1.0.0-portable.exe"
-$installerExe = Join-Path $baseDir "dist\ExoiDuino Setup 1.0.0.exe"
+$portableExe = Join-Path $baseDir "dist\ExoBlocks-1.0.0-portable.exe"
+$installerExe = Join-Path $baseDir "dist\ExoBlocks Setup 1.0.0.exe"
 
 if (-not (Test-Path $portableExe)) {
     Handle-Error "Portable EXE file was not generated at: $portableExe"

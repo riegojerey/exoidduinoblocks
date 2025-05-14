@@ -1,5 +1,5 @@
 /**
- * ExoiDuino - Sensor Block Definitions
+ * ExoBlocks - Sensor Block Definitions
  * Defines the visual appearance of sensor blocks.
  * Assumes HSL color constants are defined globally (e.g., in app.js).
  */

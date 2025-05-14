@@ -1,5 +1,5 @@
 /**
- * ExoiDuino - Blockly Web Editor for Arduino
+ * ExoBlocks - Blockly Web Editor for Arduino
  * Main application logic.
  * Assumes generator logic is loaded from separate files in libs/generator/.
  * Assumes motor block definitions are loaded from app_motors.js.
@@ -118,7 +118,7 @@ const MOTORS_HUE = "#FF6680"; // Custom Color for Motors
 
 // --- Main Initialization Function ---
 function initialize() {
-    console.log("DOM parsed. Attempting to initialize ExoiDuino...");
+    console.log("DOM parsed. Attempting to initialize ExoBlocks...");
     const boardSelector = document.getElementById('boardSelector');
     selectedBoard = boardSelector ? boardSelector.value : 'uno';
 
@@ -259,7 +259,7 @@ function initialize() {
     // --- Initial Code Generation - Moved to window.onload ---
     // generateCodeAndUpdatePreview(); // Don't call immediately
 
-    console.log("ExoiDuino Initialization complete (Blockly injected). Waiting for window load for initial code gen.");
+    console.log("ExoBlocks Initialization complete (Blockly injected). Waiting for window load for initial code gen.");
     showStatus("Ready. Add blocks, select a port, and generate code.", "info");
 }
 

@@ -1,5 +1,5 @@
 /**
- * ExoiDuino - Motor Block Definitions (L298N, Servo, Stepper)
+ * ExoBlocks - Motor Block Definitions (L298N, Servo, Stepper)
  * Defines the visual appearance of motor blocks.
  */
 

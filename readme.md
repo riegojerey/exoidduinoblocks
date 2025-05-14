@@ -1,4 +1,4 @@
-# ExoiDuino Blocks
+# ExoBlocks
 
 <div align="center">
   <img src="img/simple.png" alt="Simple Configuration Example" width="800"/>
@@ -7,7 +7,7 @@
 
 ## 🚀 Overview
 
-ExoiDuino Blocks is a web-based visual programming environment for Arduino, making it easy for beginners to learn programming while providing advanced features for experienced users. Create Arduino sketches using drag-and-drop blocks, similar to Scratch but specifically designed for Arduino development.
+ExoBlocks is a web-based visual programming environment for Arduino, making it easy for beginners to learn programming while providing advanced features for experienced users. Create Arduino sketches using drag-and-drop blocks, similar to Scratch but specifically designed for Arduino development.
 
 ## ✨ Features
 
@@ -29,7 +29,7 @@ ExoiDuino Blocks is a web-based visual programming environment for Arduino, maki
 
 ## 🌟 From Simple to Complex
 
-ExoiDuino Blocks scales with your needs:
+ExoBlocks scales with your needs:
 
 ### Simple Projects
 Perfect for beginners starting with basic Arduino concepts:
@@ -50,15 +50,23 @@ Powerful enough for advanced applications:
 
 1. **Clone the Repository**
    ```bash
-   git clone https://github.com/yourusername/exoiduinoblocks.git
-   cd exoiduinoblocks
+   git clone https://github.com/yourusername/exoblocks.git
+   cd exoblocks
    ```
 
-2. **Open in Browser**
+2. **Build the Application**
+   - Run the setup script to build the application:
+   ```powershell
+   .\setup.ps1
+   ```
+   - This will install all necessary dependencies and create the executable files
+   - The built application will be available in the `dist` directory
+
+3. **Open in Browser**
    - Open `index.html` in your web browser
    - No server required! Works completely client-side
 
-3. **Start Building**
+4. **Start Building**
    - Drag blocks from the toolbox
    - Connect them to create your program
    - Export the generated code to Arduino IDE
@@ -80,6 +88,17 @@ Powerful enough for advanced applications:
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+
+## 🌟 Open Source
+
+ExoBlocks is proudly open source! This means:
+
+- 🔓 **Free to Use**: Anyone can use, modify, and distribute the software
+- 👥 **Community Driven**: Built and improved by developers worldwide
+- 🔍 **Transparent**: All code is open for review and improvement
+- 🛠️ **Extensible**: Easy to extend and customize for your needs
+
+We believe in the power of open source to create better software through collaboration. Whether you're a developer, educator, or Arduino enthusiast, you're welcome to contribute to making ExoBlocks even better!
 
 ## 📄 License
 
@@ -119,7 +138,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 1.  **Clone the Repository:**
     ```bash
     git clone <your-repo-url>
-    cd exoidduinoblocks
+    cd exoblocks
     ```
 2.  **Open `index.html`:** Open the `index.html` file directly in a modern web browser that supports the Web Serial API (like Google Chrome or Microsoft Edge).
 
@@ -143,7 +162,7 @@ The "Upload" button uses the Web Serial API to connect to the selected Arduino p
 
 **Workflow:**
 
-1.  Use ExoiDuino to create your program with blocks.
+1.  Use ExoBlocks to create your program with blocks.
 2.  Click "Upload" to generate the code and verify the connection.
 3.  Copy the generated code from the code preview area (or the browser's developer console).
 4.  Paste the code into the Arduino IDE or save it as an `.ino` file for use with the Arduino CLI.

@@ -3,7 +3,8 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
+# Keep package-lock.json for dependency versioning
+# package-lock.json
 pnpm-lock.yaml
 
 # Build output
@@ -20,7 +21,7 @@ Thumbs.db
 desktop.ini
 
 # IDE / Editor specific
-.vscode/ # Keep extensions.json and project-specific settings.json if desired
+.vscode/
 !.vscode/extensions.json
 !.vscode/settings.json
 .idea/
@@ -33,23 +34,19 @@ desktop.ini
 # Temporary files
 *.tmp
 
-# Arduino CLI build/state files (Should not be committed)
+# Arduino CLI build/state files
 arduino-data/inventory.yaml
 arduino-data/*.latest
 arduino-data/*.lock
 arduino-data/downloads/
 
-# Electron specific (if using electron-builder or similar)
-# release/
-# *.asar
-# *.dmg
-# *.exe
-# *.AppImage
-# *.snap
-
-# If you have any local configuration files that shouldn't be committed, add them here.
-# For example:
-# .env
+# Electron specific
+release/
+*.asar
+*.dmg
+*.exe
+*.AppImage
+*.snap
 
 # Environment
 .env
@@ -57,14 +54,6 @@ arduino-data/downloads/
 .env.development.local
 .env.test.local
 .env.production.local
-
-# Environment variables
-.env
-.env.local
-.env.*.local
-
-# Dependency directories
-bower_components/
 
 # Arduino specific
 *.hex
@@ -96,4 +85,8 @@ coverage/
 # Misc
 *.bak
 *.backup
-*.old 
+*.old
+
+# Project specific
+arduino-data/arduino-cli.exe
+arduino-data/arduino-cli.yaml 

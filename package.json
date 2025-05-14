@@ -1,7 +1,7 @@
 {
-  "name": "exoiduino",
+  "name": "exoblocks",
   "version": "1.0.0",
-  "description": "ExoiDuino - Arduino Block Programming Environment by Exoid Robotics",
+  "description": "ExoBlocks - Arduino Block Programming Environment by Exoid Robotics",
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
@@ -30,8 +30,8 @@
     "rimraf": "^5.0.1"
   },
   "build": {
-    "appId": "com.exoidrobotics.exoiduino",
-    "productName": "ExoiDuino",
+    "appId": "com.exoidrobotics.exoblocks",
+    "productName": "ExoBlocks",
     "directories": {
       "output": "dist",
       "buildResources": "build"
@@ -78,7 +78,17 @@
     "asar": true,
     "asarUnpack": [
       "node_modules/@serialport/**/*",
+      "node_modules/@serialport/bindings-cpp/**/*",
       "resources/arduino-data/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "arduino-data",
+        "to": "arduino-data",
+        "filter": [
+          "**/*"
+        ]
+      }
     ]
   }
 }

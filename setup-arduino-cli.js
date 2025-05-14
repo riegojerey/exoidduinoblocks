@@ -1,6 +1,6 @@
 /**
  * Arduino CLI Setup Script
- * This script installs and configures Arduino CLI for ExoiDuino
+ * This script installs and configures Arduino CLI for ExoBlocks
  */
 const fs = require('fs');
 const path = require('path');
@@ -8,7 +8,7 @@ const { execSync } = require('child_process');
 const os = require('os');
 
 // Define paths
-const userDataDir = path.join(os.homedir(), 'AppData', 'Roaming', 'exoiduino');
+const userDataDir = path.join(os.homedir(), 'AppData', 'Roaming', 'exoblocks');
 const arduinoWorkDir = path.join(userDataDir, 'arduino-work');
 const cliPath = path.join(arduinoWorkDir, 'arduino-cli.exe');
 const configPath = path.join(arduinoWorkDir, 'arduino-cli.yaml');
